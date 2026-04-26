@@ -1,0 +1,184 @@
+/* ── Task Kanban — CSS ─────────────────────────────────────────── */
+
+/* Wrapper: positions the drag handle absolutely */
+.task-kanban-wrapper {
+  position: relative;
+  margin: 1em 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+  overflow: visible;
+}
+
+/* Drag handle — top-left grip */
+.task-kanban-handle {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  cursor: grab;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.task-kanban-handle:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.task-kanban-wrapper:hover .task-kanban-handle {
+  opacity: 1;
+}
+
+.task-kanban-handle:active {
+  cursor: grabbing;
+}
+
+/* Title bar */
+.task-kanban-header {
+  padding: 10px 16px 8px 36px; /* left = space for handle */
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--text-normal);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Board: horizontal scroll container */
+.task-kanban-board {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* Column */
+.task-kanban-column {
+  flex: 0 0 220px;
+  min-width: 220px;
+  border-top: 3px solid currentColor;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+  transition: background 0.15s;
+}
+
+.task-kanban-column.drag-over {
+  background: var(--background-modifier-hover);
+  outline: 2px dashed var(--text-muted);
+}
+
+/* Column header */
+.task-kanban-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 6px;
+}
+
+.task-kanban-col-label {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.task-kanban-col-count {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: 0.75em;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Cards list */
+.task-kanban-cards {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Individual card */
+.task-kanban-card {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-left-width: 3px;
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: grab;
+  position: relative;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+.task-kanban-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.task-kanban-card:active {
+  cursor: grabbing;
+  transform: scale(1.02);
+}
+
+.task-kanban-card-priority {
+  display: none; /* color shown via border-left */
+}
+
+.task-kanban-card-title {
+  font-size: 0.88em;
+  color: var(--text-normal);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.task-kanban-card-due {
+  margin-top: 4px;
+  font-size: 0.78em;
+  color: var(--text-muted);
+}
+
+/* Drop hint */
+.task-kanban-drop-hint {
+  border: 2px dashed var(--text-muted);
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+  font-size: 0.82em;
+  color: var(--text-muted);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Loading */
+.task-kanban-loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+/* Scrollbar */
+.task-kanban-board::-webkit-scrollbar {
+  height: 6px;
+}
+.task-kanban-board::-webkit-scrollbar-track {
+  background: transparent;
+}
+.task-kanban-board::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+}

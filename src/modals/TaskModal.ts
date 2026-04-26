@@ -364,6 +364,194 @@ export abstract class TaskModal extends Modal {
   protected setRecurrence?(rule: string | undefined): void;
   protected setReminders?(reminders: string): void;
 
+  // ── Subtasks Section ──────────────────────────────────────────
+
+  protected renderSubtasksSection(container: HTMLElement) {
+    const section = container.createDiv("task-modal-subtasks");
+    section.style.cssText = `
+      padding: 12px 20px;
+      border-top: 1px solid var(--background-modifier-border);
+    `;
+
+    const header = section.createDiv("subtasks-header");
+    header.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    `;
+
+    header.createEl("span", {
+      text: "📋 Subtasks",
+      attr: { style: "font-weight: 600; font-size: 14px;" }
+    });
+
+    const addBtn = header.createEl("button", { text: "➕ Add" });
+    addBtn.style.cssText = `
+      background: none;
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    `;
+    addBtn.onclick = () => this.showAddSubtaskDialog();
+
+    // Subtasks list container
+    const list = section.createDiv("subtasks-list");
+    list.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    `;
+
+    // Load and display existing subtasks
+    this.loadSubtasks(list);
+  }
+
+  private async loadSubtasks(container: HTMLElement) {
+    // Override in subclass to load actual subtasks
+  }
+
+  private showAddSubtaskDialog() {
+    // Placeholder - would open a task selector
+    const taskTitle = prompt("Enter task ID to add as subtask (path:line):");
+    if (taskTitle) {
+      this.onAddSubtask?.(taskTitle);
+    }
+  }
+
+  protected onAddSubtask?: (subtaskId: string) => void;
+
+  // ── Dependencies Section ──────────────────────────────────────
+
+  protected renderDependenciesSection(container: HTMLElement) {
+    const section = container.createDiv("task-modal-dependencies");
+    section.style.cssText = `
+      padding: 12px 20px;
+      border-top: 1px solid var(--background-modifier-border);
+    `;
+
+    // Blocked By
+    const blockedByHeader = section.createDiv("deps-blockedby-header");
+    blockedByHeader.style.cssText = "margin-bottom: 8px;";
+    blockedByHeader.createEl("span", {
+      text: "🔒 Blocked By",
+      attr: { style: "font-weight: 600; font-size: 14px;" }
+    });
+
+    const blockedByList = section.createDiv("blockedby-list");
+    blockedByList.style.cssText = "display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;";
+
+    const addBlockerBtn = section.createEl("button", { text: "➕ Add Blocker" });
+    addBlockerBtn.style.cssText = `
+      background: none;
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-bottom: 12px;
+    `;
+    addBlockerBtn.onclick = () => this.showAddDependencyDialog("blockedBy");
+
+    // Blocking
+    const blockingHeader = section.createDiv("deps-blocking-header");
+    blockingHeader.style.cssText = "margin-bottom: 8px;";
+    blockingHeader.createEl("span", {
+      text: "🔓 Blocking",
+      attr: { style: "font-weight: 600; font-size: 14px;" }
+    });
+
+    const blockingList = section.createDiv("blocking-list");
+    blockingList.style.cssText = "display: flex; flex-direction: column; gap: 4px;";
+
+    const addBlockedBtn = section.createEl("button", { text: "➕ Add Blocked" });
+    addBlockedBtn.style.cssText = `
+      background: none;
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    `;
+    addBlockedBtn.onclick = () => this.showAddDependencyDialog("blocking");
+
+    // Load existing dependencies
+    this.loadDependencies(blockedByList, blockingList);
+  }
+
+  private async loadDependencies(blockedByContainer: HTMLElement, blockingContainer: HTMLElement) {
+    // Override in subclass to load actual dependencies
+  }
+
+  private showAddDependencyDialog(type: "blockedBy" | "blocking") {
+    const taskId = prompt(`Enter task ID to add as ${type === "blockedBy" ? "blocker" : "blocked task"} (path:line):`);
+    if (taskId) {
+      this.onAddDependency?.(type, taskId);
+    }
+  }
+
+  protected onAddDependency?: (type: "blockedBy" | "blocking", taskId: string) => void;
+
+  // ── Projects Section ──────────────────────────────────────────
+
+  protected renderProjectsSection(container: HTMLElement) {
+    const section = container.createDiv("task-modal-projects");
+    section.style.cssText = `
+      padding: 12px 20px;
+      border-top: 1px solid var(--background-modifier-border);
+    `;
+
+    const header = section.createDiv("projects-header");
+    header.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    `;
+
+    header.createEl("span", {
+      text: "📁 Projects",
+      attr: { style: "font-weight: 600; font-size: 14px;" }
+    });
+
+    const addBtn = header.createEl("button", { text: "➕ Add" });
+    addBtn.style.cssText = `
+      background: none;
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    `;
+    addBtn.onclick = () => this.showAddProjectDialog();
+
+    // Projects list (pills/chips style)
+    const list = section.createDiv("projects-list");
+    list.style.cssText = `
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    `;
+
+    // Load existing projects
+    this.loadProjects(list);
+  }
+
+  private async loadProjects(container: HTMLElement) {
+    // Override in subclass to load actual projects
+  }
+
+  private showAddProjectDialog() {
+    const projectName = prompt("Enter project name (or [[ProjectName]] format):");
+    if (projectName) {
+      this.onAddProject?.(projectName);
+    }
+  }
+
+  protected onAddProject?: (projectName: string) => void;
+
   onClose() {
     this.contentEl.empty();
     this.onCloseAction();

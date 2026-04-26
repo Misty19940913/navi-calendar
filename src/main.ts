@@ -25,6 +25,7 @@ import { MiniCalendarView } from "./views/MiniCalendarView";
 import { TaskService } from "./services/TaskService";
 import { ViewStateManager } from "./services/ViewStateManager";
 import { SettingsTab } from "./settings/SettingsTab";
+import { TaskKanbanPostProcessor } from "./kanban/TaskKanbanPostProcessor";
 
 // ── AI Command Handler Interface ───────────────────────────────
 export interface AICommandHandler {
@@ -55,6 +56,9 @@ export default class NaviCalendarPlugin extends Plugin {
 
   // Calendar leaf references
   private mainCalendarLeaf: WorkspaceLeaf | null = null;
+
+  // Kanban post-processor
+  kanbanPostProcessor!: TaskKanbanPostProcessor;
 
   // ── Lifecycle ────────────────────────────────────────────────
 
@@ -103,6 +107,9 @@ export default class NaviCalendarPlugin extends Plugin {
     this.statusBar = this.addStatusBarItem();
     this.statusBar.setText('📅 Navi Calendar');
 
+    // ── Task Kanban Code Block ─────────────────────────────────────
+    this.kanbanPostProcessor = new TaskKanbanPostProcessor(this);
+
     // Register AI command handlers
     this.registerAICommands();
 
@@ -129,6 +136,8 @@ export default class NaviCalendarPlugin extends Plugin {
     this.app.workspace.getLeavesOfType(MINI_CALENDAR_VIEW_TYPE).forEach((leaf) => {
       leaf.detach();
     });
+    // Cleanup kanban post-processor
+    this.kanbanPostProcessor?.unload();
   }
 
   // ── Settings ─────────────────────────────────────────────────
