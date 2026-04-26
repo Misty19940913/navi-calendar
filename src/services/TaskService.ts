@@ -7,6 +7,7 @@ import {
   CalendarEvent,
   NaviCalendarSettings,
   TaskPriority,
+  TaskDependency,
 } from "../types";
 import NaviCalendarPlugin from "../main";
 
@@ -641,5 +642,260 @@ export class TaskService {
     }
 
     await leaf.openFile(file);
+  }
+
+  // ── Dependency Management ──────────────────────────────────────
+
+  /**
+   * Get a task by its UID (unique identifier path:line)
+   */
+  async getTaskByUid(uid: string): Promise<TaskInfo | null> {
+    const allTasks = await this.getAllTasks();
+    return allTasks.find(t => t.id === uid) || null;
+  }
+
+  /**
+   * Get task dependencies (both blockedBy and blocking)
+   */
+  async getTaskDependencies(task: TaskInfo): Promise<{
+    blockedBy: TaskDependency[];
+    blocking: TaskDependency[];
+  }> {
+    const allTasks = await this.getAllTasks();
+    
+    // Parse blockedBy UIDs from task
+    const blockedBy: TaskDependency[] = [];
+    if (task.blockedBy) {
+      for (const uid of task.blockedBy) {
+        const blockerTask = allTasks.find(t => t.id === uid);
+        if (blockerTask) {
+          blockedBy.push({
+            uid: blockerTask.id,
+            reltype: "FINISHTOSTART", // default
+          });
+        }
+      }
+    }
+
+    // Find tasks that this task blocks (blocking)
+    const blocking: TaskDependency[] = [];
+    for (const t of allTasks) {
+      if (t.blockedBy && t.blockedBy.includes(task.id)) {
+        blocking.push({
+          uid: t.id,
+          reltype: "FINISHTOSTART",
+        });
+      }
+    }
+
+    return { blockedBy, blocking };
+  }
+
+  /**
+   * Check if adding a blocker would create a circular dependency
+   */
+  private checkCircularDependency(taskId: string, newBlockerId: string): boolean {
+    // If taskId equals newBlockerId, it's a self-reference
+    if (taskId === newBlockerId) return true;
+    
+    // Check if newBlockerId already depends on taskId (directly or transitively)
+    const visited = new Set<string>();
+    const queue = [newBlockerId];
+    
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      
+      if (current === taskId) return true;
+      
+      // Get dependencies of current
+      const currentTask = this.findTaskByIdSync(current);
+      if (currentTask?.blockedBy) {
+        queue.push(...currentTask.blockedBy);
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Synchronous helper to find a task by ID (uses cache)
+   */
+  private findTaskByIdSync(taskId: string): TaskInfo | null {
+    const cached = this.cache.get("all");
+    if (cached) {
+      return cached.tasks.find(t => t.id === taskId) || null;
+    }
+    return null;
+  }
+
+  /**
+   * Add a blockedBy relationship with bidirectional sync
+   */
+  async addBlockedBy(taskId: string, blockerId: string): Promise<boolean> {
+    // Check for circular dependency
+    if (this.checkCircularDependency(taskId, blockerId)) {
+      console.warn(`[TaskService] Circular dependency detected: ${taskId} -> ${blockerId}`);
+      return false;
+    }
+
+    const task = await this.getTaskByUid(taskId);
+    const blocker = await this.getTaskByUid(blockerId);
+    
+    if (!task || !blocker) {
+      console.error(`[TaskService] Task not found: ${taskId} or ${blockerId}`);
+      return false;
+    }
+
+    // Add blocker to task.blockedBy
+    const currentBlockedBy = task.blockedBy || [];
+    if (!currentBlockedBy.includes(blockerId)) {
+      const newBlockedBy = [...currentBlockedBy, blockerId];
+      await this.updateTask(taskId, { blockedBy: newBlockedBy } as any);
+    }
+
+    // Automatically add task to blocker's blocking (bidirectional sync)
+    const currentBlocking = blocker.blocking || [];
+    if (!currentBlocking.includes(taskId)) {
+      const newBlocking = [...currentBlocking, taskId];
+      await this.updateTask(blockerId, { blocking: newBlocking } as any);
+    }
+
+    return true;
+  }
+
+  /**
+   * Remove a blockedBy relationship with bidirectional sync
+   */
+  async removeBlockedBy(taskId: string, blockerId: string): Promise<void> {
+    const task = await this.getTaskByUid(taskId);
+    const blocker = await this.getTaskByUid(blockerId);
+
+    if (!task || !blocker) return;
+
+    // Remove blocker from task.blockedBy
+    const currentBlockedBy = task.blockedBy || [];
+    if (currentBlockedBy.includes(blockerId)) {
+      const newBlockedBy = currentBlockedBy.filter(id => id !== blockerId);
+      await this.updateTask(taskId, { blockedBy: newBlockedBy } as any);
+    }
+
+    // Automatically remove task from blocker's blocking
+    const currentBlocking = blocker.blocking || [];
+    if (currentBlocking.includes(taskId)) {
+      const newBlocking = currentBlocking.filter(id => id !== taskId);
+      await this.updateTask(blockerId, { blocking: newBlocking } as any);
+    }
+  }
+
+  // ── Subtasks Management ────────────────────────────────────────
+
+  /**
+   * Get all subtasks for a task
+   */
+  async getSubtasks(taskId: string): Promise<TaskInfo[]> {
+    const task = await this.getTaskByUid(taskId);
+    if (!task || !task.subtasks || task.subtasks.length === 0) {
+      return [];
+    }
+
+    const allTasks = await this.getAllTasks();
+    const subtasks: TaskInfo[] = [];
+
+    for (const subtaskId of task.subtasks) {
+      const subtask = allTasks.find(t => t.id === subtaskId);
+      if (subtask) {
+        subtasks.push(subtask);
+      }
+    }
+
+    return subtasks;
+  }
+
+  /**
+   * Get task with all its subtasks populated
+   */
+  async getTaskWithSubtasks(taskId: string): Promise<TaskInfo & { subtasks: TaskInfo[] }> {
+    const task = await this.getTaskByUid(taskId);
+    const subtasks = await this.getSubtasks(taskId);
+    
+    return {
+      ...task!,
+      subtasks,
+    };
+  }
+
+  /**
+   * Add a subtask to a task
+   */
+  async addSubtask(taskId: string, subtaskId: string): Promise<void> {
+    const task = await this.getTaskByUid(taskId);
+    if (!task) return;
+
+    // Prevent self-reference
+    if (taskId === subtaskId) {
+      console.warn("[TaskService] Cannot add task as its own subtask");
+      return;
+    }
+
+    const currentSubtasks = task.subtasks || [];
+    if (!currentSubtasks.includes(subtaskId)) {
+      const newSubtasks = [...currentSubtasks, subtaskId];
+      await this.updateTask(taskId, { subtasks: newSubtasks } as any);
+    }
+  }
+
+  /**
+   * Remove a subtask from a task
+   */
+  async removeSubtask(taskId: string, subtaskId: string): Promise<void> {
+    const task = await this.getTaskByUid(taskId);
+    if (!task) return;
+
+    const currentSubtasks = task.subtasks || [];
+    if (currentSubtasks.includes(subtaskId)) {
+      const newSubtasks = currentSubtasks.filter(id => id !== subtaskId);
+      await this.updateTask(taskId, { subtasks: newSubtasks } as any);
+    }
+  }
+
+  // ── Enhanced Delete with Dependency Cleanup ────────────────────
+
+  async deleteTaskEnhanced(taskId: string): Promise<void> {
+    const task = await this.getTaskByUid(taskId);
+    if (!task) return;
+
+    // Clean up blockedBy references
+    if (task.blockedBy) {
+      for (const blockerId of task.blockedBy) {
+        await this.removeBlockedBy(taskId, blockerId);
+      }
+    }
+
+    // Clean up blocking references (tasks that this task blocks)
+    if (task.blocking) {
+      for (const blockedId of task.blocking) {
+        await this.removeBlockedBy(blockedId, taskId);
+      }
+    }
+
+    // Clean up subtask references
+    if (task.subtasks) {
+      for (const subtaskId of task.subtasks) {
+        await this.removeSubtask(taskId, subtaskId);
+      }
+    }
+
+    // Also need to clean up any tasks that have this task as a subtask
+    const allTasks = await this.getAllTasks();
+    for (const t of allTasks) {
+      if (t.subtasks && t.subtasks.includes(taskId)) {
+        await this.removeSubtask(t.id, taskId);
+      }
+    }
+
+    // Finally delete the task
+    await this.deleteTask(taskId);
   }
 }

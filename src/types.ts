@@ -45,12 +45,30 @@ export interface TaskInfo {
   tags?: string[];               // Inline tags
   projects?: string[];            // Project references
   sortOrder?: string;            // LexoRank for ordering
+  
+  // Subtasks
+  subtasks?: string[];           // Array of subtask UIDs
+  
+  // Dependencies - computed tracking (blockedBy are the blockers, blocking are tasks this blocks)
+  isBlocking?: boolean;          // Whether this task is blocking others
+  
+  // Additional
+  description?: string;          // Markdown description body
+  reminder?: string[];           // Reminder timestamps
 }
 
 export interface TaskDependency {
   uid: string;                   // Blocking task ID
   reltype: "FINISHTOSTART" | "FINISHTOFINISH" | "STARTTOSTART" | "STARTTOFINISH";
   gap?: string;                  // ISO 8601 duration offset
+}
+
+// ── Subtasks ─────────────────────────────────────────────────────
+export interface SubtaskInfo {
+  uid: string;                   // Subtask task ID
+  title: string;                 // Subtask title
+  status: string;                // Subtask status
+  completed: boolean;           // Whether subtask is completed
 }
 
 // ── Task Creation / Edit ─────────────────────────────────────
