@@ -1,6 +1,7 @@
 import { Notice } from "obsidian";
 import { TaskModal } from "./TaskModal";
 import { TaskInfo, TaskPriority } from "../types";
+import NaviCalendarPlugin from "../main";
 
 interface TaskCreationOptions {
   prePopulatedValues?: {

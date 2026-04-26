@@ -37,20 +37,20 @@ export interface TaskInfo {
   line: number;                  // Line number in file
   recurrence?: string;           // RFC 5545 recurrence rule
   recurrenceAnchor?: "scheduled" | "due"; // When recurrence repeats from
-  blockedBy?: string[];           // Task IDs that block this one
   isBlocked?: boolean;            // Computed: any blocking task incomplete
-  blockedByDependency?: TaskDependency[];
   completedDate?: string;        // YYYY-MM-DD when marked done
   dateCreated?: string;           // ISO timestamp
   tags?: string[];               // Inline tags
   projects?: string[];            // Project references
   sortOrder?: string;            // LexoRank for ordering
-  
+
   // Subtasks
   subtasks?: string[];           // Array of subtask UIDs
-  
-  // Dependencies - computed tracking (blockedBy are the blockers, blocking are tasks this blocks)
-  isBlocking?: boolean;          // Whether this task is blocking others
+
+  // Dependencies - blockedBy are tasks that block this one; blocking is tasks this one blocks
+  blockedBy?: string[];          // Task IDs that block this task
+  blocking?: string[];           // Task IDs that this task is blocking
+  isBlocking?: boolean;          // Computed: whether this task is currently blocking others
   
   // Additional
   description?: string;          // Markdown description body

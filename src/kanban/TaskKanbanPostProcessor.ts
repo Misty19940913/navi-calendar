@@ -40,7 +40,7 @@ export class TaskKanbanPostProcessor {
     if (lang !== "task-kanban") return;
 
     const sourcePath = ctx.sourcePath;
-    const sectionInfo = ctx.getSectionInfo?.();
+    const sectionInfo = ctx.getSectionInfo(el);
     const blockId = `${sourcePath}:${sectionInfo?.lineStart ?? 0}`;
 
     // Clean up previous instance (Reading mode re-runs on scroll)

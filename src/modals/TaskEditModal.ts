@@ -1,6 +1,7 @@
-import { Notice } from "obsidian";
+import { Notice, Setting } from "obsidian";
 import { TaskModal } from "./TaskModal";
 import { TaskInfo, TaskPriority } from "../types";
+import NaviCalendarPlugin from "../main";
 
 export class TaskEditModal extends TaskModal {
   task: TaskInfo;
@@ -180,6 +181,3 @@ export class TaskEditModal extends TaskModal {
     console.log("[TaskEditModal] setReminders:", reminders);
   }
 }
-
-// Import NaviCalendarPlugin for type
-import NaviCalendarPlugin from "../main";

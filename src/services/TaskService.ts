@@ -366,44 +366,60 @@ export class TaskService {
 
     let line = lines[lineNum - 1];
 
+    // Handle title update — modify the task line text
+    if (data.title !== undefined) {
+      // Replace the task text between checkbox and any emoji markers
+      // Pattern: `- [ ] Title...` or `- [x] Title...`
+      const taskTextMatch = line.match(/^(\s*[-*]\s*\[[ xX\->!]\]\s*)(.*)/);
+      if (taskTextMatch) {
+        // Keep the checkbox prefix, replace the rest
+        // Strip old title and emoji indicators, keep tags
+        const oldText = taskTextMatch[2];
+        // Preserve inline tags at the end
+        const tagsMatch = oldText.match(/(\s+#[\w\-]+)*$/);
+        const tags = tagsMatch ? tagsMatch[0] : "";
+        lines[lineNum - 1] = `${taskTextMatch[1]}${data.title}${tags}`;
+      }
+    }
+
     // Handle completion toggle
     if (data.completed !== undefined) {
       if (data.completed) {
         // Mark as done: - [ ] → - [x]
-        line = line.replace(/^(\s*[-*]\s*\[)\s*(\])/, "$1x$2");
+        lines[lineNum - 1] = lines[lineNum - 1].replace(/^(\s*[-*]\s*\[)\s*(\])/, "$1x$2");
         // Add completed date if not present
         const today = format(new Date(), "yyyy-MM-dd");
-        if (!line.includes("✅")) {
-          line += ` ✅${today}`;
+        if (!lines[lineNum - 1].includes("✅")) {
+          lines[lineNum - 1] += ` ✅${today}`;
         }
       } else {
         // Mark as todo: - [x] → - [ ]
-        line = line.replace(/^(\s*[-*]\s*\[)[xX](\])/, "$1 $2");
+        lines[lineNum - 1] = lines[lineNum - 1].replace(/^(\s*[-*]\s*\[)[xX](\])/, "$1 $2");
       }
     }
 
     // Handle due date update
     if (data.due !== undefined) {
       // Remove existing due indicator
-      line = line.replace(/\s*📅[\d\-]+/, "");
+      lines[lineNum - 1] = lines[lineNum - 1].replace(/\s*📅[\d\-]+/, "");
       // Add new due
       if (data.due) {
-        line += ` 📅${data.due}`;
+        lines[lineNum - 1] += ` 📅${data.due}`;
       }
     }
 
     // Handle scheduled date update
     if (data.scheduled !== undefined) {
-      line = line.replace(/\s*⏰[\d:]+/, "");
+      lines[lineNum - 1] = lines[lineNum - 1].replace(/\s*⏰[\d:]+/, "");
       if (data.scheduled) {
-        line += ` ⏰${data.scheduled}`;
+        lines[lineNum - 1] += ` ⏰${data.scheduled}`;
       }
     }
 
     // Handle priority update
     if (data.priority !== undefined) {
       // Remove existing priority emojis
-      line = line.replace(/\s*[🔴🟡🟢🟣❗❕]/, "");
+      lines[lineNum - 1] = lines[lineNum - 1].replace(/\s*[🔴🟡🟢🟣❗❕]/, "");
       const priorityEmoji: Record<string, string> = {
         high: " 🔴",
         medium: " 🟡",
@@ -411,11 +427,10 @@ export class TaskService {
         urgent: " 🟣",
       };
       if (data.priority && priorityEmoji[data.priority]) {
-        line += priorityEmoji[data.priority];
+        lines[lineNum - 1] += priorityEmoji[data.priority];
       }
     }
 
-    lines[lineNum - 1] = line;
     await this.plugin.app.vault.modify(file, lines.join("\n"));
 
     // Return updated task
@@ -822,7 +837,7 @@ export class TaskService {
     
     return {
       ...task!,
-      subtasks,
+      subtasks: subtasks as any,
     };
   }
 

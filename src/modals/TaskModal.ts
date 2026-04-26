@@ -1,4 +1,4 @@
-import { App, Modal, TextComponent, Setting, ButtonComponent, DropdownComponent } from "obsidian";
+import { Modal, TextComponent, Setting, DropdownComponent, Notice } from "obsidian";
 import NaviCalendarPlugin from "../main";
 import { TaskInfo, TaskPriority } from "../types";
 
@@ -61,6 +61,15 @@ export abstract class TaskModal extends Modal {
     // File info footer
     this.renderFooter(contentEl);
 
+    // Subtasks section
+    this.renderSubtasksSection(contentEl);
+
+    // Dependencies section
+    this.renderDependenciesSection(contentEl);
+
+    // Projects section
+    this.renderProjectsSection(contentEl);
+
     // Keyboard handler
     this.titleInput.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") this.handleSave();
@@ -96,7 +105,7 @@ export abstract class TaskModal extends Modal {
       padding: 4px 8px;
       border-radius: 4px;
     `;
-    expandBtn.textContent = this.isExpanded ? "⬚" : "⬗";
+    expandBtn.textContent = this.isExpanded ? "⬗" : "⬚";
     expandBtn.onclick = () => this.toggleExpand();
   }
 
@@ -120,14 +129,32 @@ export abstract class TaskModal extends Modal {
       this.showDatePicker("scheduled");
     });
 
-    // Status button (⭕/❌/▶️/—)
-    this.createActionButton(actionBar, "⭕", "Set status", () => {
-      this.showStatusMenu();
-    });
+    // Status button (⭕/❌/▶️/—) — dynamic emoji
+    this.createStatusActionButton(actionBar);
 
     // Priority button (🔺/🔻/—)
     this.createActionButton(actionBar, "🔺", "Set priority", () => {
       this.showPriorityMenu();
+    });
+
+    // Blocked By
+    this.createActionButton(actionBar, "🔒", "Set blocked by", () => {
+      this.showBlockedByMenu();
+    });
+
+    // Blocking
+    this.createActionButton(actionBar, "🔓", "Set blocking", () => {
+      this.showBlockingMenu();
+    });
+
+    // Subtasks
+    this.createActionButton(actionBar, "📋", "Set subtasks", () => {
+      this.showSubtasksMenu();
+    });
+
+    // Projects
+    this.createActionButton(actionBar, "📁", "Set projects", () => {
+      this.showProjectsMenu();
     });
 
     // Recurrence button (🔁)
@@ -139,6 +166,34 @@ export abstract class TaskModal extends Modal {
     this.createActionButton(actionBar, "🔔", "Set reminders", () => {
       this.showRemindersMenu();
     });
+  }
+
+  private showBlockedByMenu() {
+    const taskId = prompt("Enter task ID that blocks this task (path:line):");
+    if (taskId) {
+      this.onAddDependency?.("blockedBy", taskId);
+    }
+  }
+
+  private showBlockingMenu() {
+    const taskId = prompt("Enter task ID that this task blocks (path:line):");
+    if (taskId) {
+      this.onAddDependency?.("blocking", taskId);
+    }
+  }
+
+  private showSubtasksMenu() {
+    const taskId = prompt("Enter task ID to add as subtask (path:line):");
+    if (taskId) {
+      this.onAddSubtask?.(taskId);
+    }
+  }
+
+  private showProjectsMenu() {
+    const projectName = prompt("Enter project name:");
+    if (projectName) {
+      this.onAddProject?.(projectName);
+    }
   }
 
   private createActionButton(
@@ -164,6 +219,43 @@ export abstract class TaskModal extends Modal {
     `;
     btn.textContent = emoji;
     btn.onclick = onClick;
+    btn.onmouseenter = () => {
+      btn.style.background = "var(--background-modifier-hover)";
+    };
+    btn.onmouseleave = () => {
+      btn.style.background = "var(--background-secondary)";
+    };
+    return btn;
+  }
+
+  private createStatusActionButton(container: HTMLElement): HTMLElement {
+    const statusEmoji: Record<string, string> = {
+      " ": "⭕",
+      x: "❌",
+      X: "❌",
+      "-": "—",
+      ">": "▶️",
+    };
+    const current = this.getCurrentStatus?.() || " ";
+    const emoji = statusEmoji[current] || "⭕";
+
+    const btn = container.createEl("button", {
+      attr: { class: "task-modal-action-btn", title: "Set status" }
+    });
+    btn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      background: var(--background-secondary);
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.15s;
+    `;
+    btn.textContent = emoji;
+    btn.onclick = () => this.showStatusMenu();
     btn.onmouseenter = () => {
       btn.style.background = "var(--background-modifier-hover)";
     };
@@ -334,7 +426,7 @@ export abstract class TaskModal extends Modal {
     // Update button icon
     const btn = this.contentEl.querySelector(".task-modal-expand-btn");
     if (btn) {
-      btn.textContent = this.isExpanded ? "⬚" : "⬗";
+      btn.textContent = this.isExpanded ? "⬗" : "⬚";
     }
   }
 
@@ -345,7 +437,7 @@ export abstract class TaskModal extends Modal {
       await this.onSave();
     } catch (err) {
       console.error("[TaskModal] Save error:", err);
-      new Notice(`Failed to save: ${err.message}`);
+      new Notice(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
