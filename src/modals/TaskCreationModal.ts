@@ -1,8 +1,8 @@
-import { App, Modal, TextComponent, Setting } from "obsidian";
-import NaviCalendarPlugin from "../main";
+import { Notice } from "obsidian";
+import { TaskModal } from "./TaskModal";
 import { TaskInfo, TaskPriority } from "../types";
 
-interface TaskModalOptions {
+interface TaskCreationOptions {
   prePopulatedValues?: {
     title?: string;
     scheduled?: string;
@@ -13,127 +13,42 @@ interface TaskModalOptions {
   onTaskCreated?: (taskInfo: TaskInfo) => void;
 }
 
-export class TaskCreationModal extends Modal {
-  private plugin: NaviCalendarPlugin;
-  private options: TaskModalOptions;
+export class TaskCreationModal extends TaskModal {
+  private options: TaskCreationOptions;
 
-  private titleInput!: TextComponent;
-  private scheduledDateInput!: TextComponent;
-  private dueDateInput!: TextComponent;
-  private startTimeInput!: TextComponent;
-  private endTimeInput!: TextComponent;
-  private saveButtonSetting!: Setting;
-
-  constructor(plugin: NaviCalendarPlugin, options: TaskModalOptions = {}) {
-    super(plugin.app);
-    this.plugin = plugin;
+  constructor(plugin: NaviCalendarPlugin, options: TaskCreationOptions = {}) {
+    super(plugin);
     this.options = options;
   }
 
-  async onOpen() {
-    const { contentEl } = this;
-    contentEl.createEl("h2", { text: "➕ New Task" });
+  // ── Abstract Implementation ────────────────────────────────────
 
-    // Title
-    new Setting(contentEl)
-      .setName("Title")
-      .addText((text) => {
-        this.titleInput = text;
-        text.inputEl.style.width = "100%";
-        text.inputEl.placeholder = "Task title...";
-        text.inputEl.autofocus = true;
-        if (this.options.prePopulatedValues?.title) {
-          text.setValue(this.options.prePopulatedValues.title);
-        }
-        text.onChange(() => this.updateSaveButton());
-      });
-
-    // Scheduled date
-    new Setting(contentEl)
-      .setName("Scheduled Date")
-      .addText((text) => {
-        this.scheduledDateInput = text;
-        text.inputEl.placeholder = "YYYY-MM-DD";
-        text.inputEl.style.width = "100%";
-        if (this.options.prePopulatedValues?.scheduled) {
-          text.setValue(this.options.prePopulatedValues.scheduled);
-        }
-      });
-
-    // Due date
-    new Setting(contentEl)
-      .setName("Due Date")
-      .addText((text) => {
-        this.dueDateInput = text;
-        text.inputEl.placeholder = "YYYY-MM-DD";
-        text.inputEl.style.width = "100%";
-        if (this.options.prePopulatedValues?.due) {
-          text.setValue(this.options.prePopulatedValues.due);
-        }
-      });
-
-    // Start time
-    new Setting(contentEl)
-      .setName("Start Time")
-      .addText((text) => {
-        this.startTimeInput = text;
-        text.inputEl.placeholder = "HH:MM";
-        text.inputEl.style.width = "100%";
-        if (this.options.prePopulatedValues?.startTime) {
-          text.setValue(this.options.prePopulatedValues.startTime);
-        }
-      });
-
-    // End time
-    new Setting(contentEl)
-      .setName("End Time")
-      .addText((text) => {
-        this.endTimeInput = text;
-        text.inputEl.placeholder = "HH:MM";
-        text.inputEl.style.width = "100%";
-        if (this.options.prePopulatedValues?.endTime) {
-          text.setValue(this.options.prePopulatedValues.endTime);
-        }
-      });
-
-    // Save button
-    this.saveButtonSetting = new Setting(contentEl)
-      .addButton((btn) => {
-        btn.setButtonText("Create Task");
-        btn.setCta();
-        btn.onClick(() => this.handleCreate());
-      });
-
-    // Enter to submit
-    this.titleInput.inputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") this.handleCreate();
-    });
-
-    // Initial button state
-    this.updateSaveButton();
+  protected getTitle(): string {
+    return "➕ New Task";
   }
 
-  private updateSaveButton() {
-    const title = this.titleInput?.getValue().trim() || "";
-    const btn = this.saveButtonSetting?.descEl?.querySelector("button");
-    if (btn) {
-      btn.toggleAttribute("disabled", !title);
-    }
+  protected getCurrentTaskPath(): string | null {
+    return null; // New task, no path yet
   }
 
-  private async handleCreate() {
+  protected async onSave(): Promise<void> {
     const title = this.titleInput.getValue().trim();
-    if (!title) return;
+    if (!title) {
+      new Notice("Please enter a task title");
+      return;
+    }
 
-    const scheduled = this.scheduledDateInput.getValue().trim() || undefined;
-    const due = this.dueDateInput.getValue().trim() || undefined;
+    const due = this.dueDateInput?.getValue().trim() || undefined;
+    const scheduled = this.scheduledDateInput?.getValue().trim() || undefined;
+    const priority = this.priorityDropdown?.getValue() as TaskPriority;
     const startTime = this.startTimeInput?.getValue().trim() || undefined;
     const endTime = this.endTimeInput?.getValue().trim() || undefined;
 
-    const taskInfo = await this.plugin.taskService.createTask({
+    // Use createTaskAsFile for file-based task creation
+    const taskInfo = await this.plugin.taskService.createTaskAsFile({
       title,
-      scheduled,
       due,
+      scheduled,
       startTime,
       endTime,
     });
@@ -144,7 +59,66 @@ export class TaskCreationModal extends Modal {
     }
   }
 
-  onClose() {
-    this.contentEl.empty();
+  protected onCloseAction(): void {
+    // Creation specific cleanup if needed
+  }
+
+  // ── Lifecycle ──────────────────────────────────────────────────
+
+  async onOpen() {
+    await super.onOpen();
+
+    // Apply pre-populated values
+    if (this.options.prePopulatedValues) {
+      if (this.options.prePopulatedValues.title) {
+        this.titleInput.setValue(this.options.prePopulatedValues.title);
+      }
+      if (this.options.prePopulatedValues.scheduled) {
+        this.scheduledDateInput?.setValue(this.options.prePopulatedValues.scheduled);
+      }
+      if (this.options.prePopulatedValues.due) {
+        this.dueDateInput?.setValue(this.options.prePopulatedValues.due);
+      }
+      if (this.options.prePopulatedValues.startTime) {
+        this.startTimeInput?.setValue(this.options.prePopulatedValues.startTime);
+      }
+      if (this.options.prePopulatedValues.endTime) {
+        this.endTimeInput?.setValue(this.options.prePopulatedValues.endTime);
+      }
+    }
+
+    // Add save button at the bottom
+    this.renderSaveButton();
+  }
+
+  private renderSaveButton() {
+    const contentEl = this.contentEl;
+    
+    const btnArea = contentEl.createDiv("task-modal-footer");
+    btnArea.style.cssText = `
+      display: flex;
+      gap: 8px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--background-modifier-border);
+    `;
+
+    const saveBtn = btnArea.createEl("button", {
+      text: "Create Task",
+      attr: { class: "mod-cta" }
+    });
+    saveBtn.style.cssText = `
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+    `;
+    saveBtn.onclick = () => this.handleSave();
+
+    const cancelBtn = btnArea.createEl("button", { text: "Cancel" });
+    cancelBtn.style.cssText = `
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+    `;
+    cancelBtn.onclick = () => this.close();
   }
 }

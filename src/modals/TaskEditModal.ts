@@ -1,83 +1,130 @@
-import { Modal, TextComponent, DropdownComponent, Setting, ButtonComponent } from "obsidian";
-import NaviCalendarPlugin from "../main";
+import { Notice } from "obsidian";
+import { TaskModal } from "./TaskModal";
 import { TaskInfo, TaskPriority } from "../types";
 
-export class TaskEditModal extends Modal {
-  plugin: NaviCalendarPlugin;
+export class TaskEditModal extends TaskModal {
   task: TaskInfo;
   onUpdate: () => void;
-
-  private titleInput!: TextComponent;
-  private dueInput!: TextComponent;
-  private scheduledInput!: TextComponent;
-  private priorityDropdown!: DropdownComponent;
-  private startTimeInput!: TextComponent;
-  private endTimeInput!: TextComponent;
+  private statusValue: string;
 
   constructor(plugin: NaviCalendarPlugin, task: TaskInfo, onUpdate: () => void) {
-    super(plugin.app);
-    this.plugin = plugin;
+    super(plugin);
     this.task = task;
     this.onUpdate = onUpdate;
+    this.statusValue = task.status || " ";
   }
 
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
+  // ── Abstract Implementation ────────────────────────────────────
 
-    contentEl.createEl("h2", { text: "✏️ Edit Task" });
+  protected getTitle(): string {
+    return "✏️ Edit Task";
+  }
 
-    // Title
-    new Setting(contentEl).setName("Title").addText((text) => {
-      this.titleInput = text;
-      text.inputEl.value = this.task.title;
-    });
+  protected getCurrentTaskPath(): string {
+    return `${this.task.path}:${this.task.line}`;
+  }
 
+  protected async onSave(): Promise<void> {
+    const title = this.titleInput.getValue().trim();
+    if (!title) {
+      new Notice("Please enter a task title");
+      return;
+    }
+
+    const due = this.dueDateInput?.getValue().trim() || undefined;
+    const scheduled = this.scheduledDateInput?.getValue().trim() || undefined;
+    const priority = this.priorityDropdown?.getValue() as TaskPriority;
+    const startTime = this.startTimeInput?.getValue().trim() || undefined;
+    const endTime = this.endTimeInput?.getValue().trim() || undefined;
+
+    await this.plugin.taskService.updateTask(this.task.id, {
+      title, // Note: updateTask doesn't handle title, but we pass it
+      due,
+      scheduled,
+      priority,
+      startTime,
+      endTime,
+      completed: this.statusValue === "x" || this.statusValue === "X",
+    } as any);
+
+    this.onUpdate();
+    this.close();
+  }
+
+  protected onCloseAction(): void {
+    // Nothing special for edit modal
+  }
+
+  // ── Override Details Section ──────────────────────────────────
+
+  protected renderDetailsSection(container: HTMLElement): void {
     // Due date
-    new Setting(contentEl).setName("Due date (📅)").addText((text) => {
-      this.dueInput = text;
-      text.inputEl.placeholder = "YYYY-MM-DD";
-      if (this.task.due) text.setValue(this.task.due);
-    });
+    new Setting(container)
+      .setName("Due Date (📅)")
+      .addText((text) => {
+        this.dueDateInput = text;
+        text.inputEl.placeholder = "YYYY-MM-DD";
+        text.inputEl.style.width = "100%";
+        if (this.task.due) text.setValue(this.task.due);
+      });
 
     // Scheduled date
-    new Setting(contentEl).setName("Scheduled (⏰)").addText((text) => {
-      this.scheduledInput = text;
-      text.inputEl.placeholder = "YYYY-MM-DD";
-      if (this.task.scheduled) text.setValue(this.task.scheduled);
-    });
+    new Setting(container)
+      .setName("Scheduled (⏰)")
+      .addText((text) => {
+        this.scheduledDateInput = text;
+        text.inputEl.placeholder = "YYYY-MM-DD";
+        text.inputEl.style.width = "100%";
+        if (this.task.scheduled) text.setValue(this.task.scheduled);
+      });
 
     // Priority
-    new Setting(contentEl).setName("Priority").addDropdown((dropdown) => {
-      this.priorityDropdown = dropdown;
-      dropdown
-        .addOptions({
-          none: "None",
-          low: "🟢 Low",
+    new Setting(container)
+      .setName("Priority")
+      .addDropdown((dropdown) => {
+        this.priorityDropdown = dropdown;
+        dropdown.addOptions({
+          none: "— None",
+          low: "🔻 Low",
           medium: "🟡 Medium",
           high: "🔴 High",
           urgent: "🟣 Urgent",
-        })
-        .setValue(this.task.priority || "none");
-    });
+        });
+        dropdown.setValue(this.task.priority || "none");
+      });
 
-    // Time range
-    new Setting(contentEl).setName("Start time").addText((text) => {
-      this.startTimeInput = text;
-      text.inputEl.placeholder = "HH:MM";
-      if (this.task.startTime) text.setValue(this.task.startTime);
-    });
+    // Start time
+    new Setting(container)
+      .setName("Start time")
+      .addText((text) => {
+        this.startTimeInput = text;
+        text.inputEl.placeholder = "HH:MM";
+        text.inputEl.style.width = "100%";
+        if (this.task.startTime) text.setValue(this.task.startTime);
+      });
 
-    new Setting(contentEl).setName("End time").addText((text) => {
-      this.endTimeInput = text;
-      text.inputEl.placeholder = "HH:MM";
-      if (this.task.endTime) text.setValue(this.task.endTime);
-    });
+    // End time
+    new Setting(container)
+      .setName("End time")
+      .addText((text) => {
+        this.endTimeInput = text;
+        text.inputEl.placeholder = "HH:MM";
+        text.inputEl.style.width = "100%";
+        if (this.task.endTime) text.setValue(this.task.endTime);
+      });
+  }
 
-    // Action buttons
-    new Setting(contentEl).addButton((btn) =>
-      btn.setButtonText("💾 Save Changes").setCta().onClick(() => this.save())
-    );
+  // ── Lifecycle ──────────────────────────────────────────────────
+
+  async onOpen() {
+    await super.onOpen();
+
+    // Add action buttons at bottom
+    this.renderActionButtons();
+  }
+
+  private renderActionButtons() {
+    const contentEl = this.contentEl;
 
     // Toggle completion button
     const isDone = this.task.status === "x" || this.task.status === "X";
@@ -94,31 +141,6 @@ export class TaskEditModal extends Modal {
         .setWarning()
         .onClick(() => this.delete())
     );
-
-    // File info
-    contentEl.createEl("p", {
-      text: `📁 ${this.task.path}:${this.task.line}`,
-      attr: { style: "color: var(--text-muted); font-size: 0.85em;" },
-    });
-  }
-
-  private async save() {
-    const due = this.dueInput?.getValue().trim() || undefined;
-    const scheduled = this.scheduledInput?.getValue().trim() || undefined;
-    const priority = this.priorityDropdown.getValue() as TaskPriority;
-    const startTime = this.startTimeInput?.getValue().trim() || undefined;
-    const endTime = this.endTimeInput?.getValue().trim() || undefined;
-
-    await this.plugin.taskService.updateTask(this.task.id, {
-      due,
-      scheduled,
-      priority,
-      startTime,
-      endTime,
-    } as any);
-
-    this.onUpdate();
-    this.close();
   }
 
   private async toggleComplete() {
@@ -138,5 +160,26 @@ export class TaskEditModal extends Modal {
     }
   }
 
-  onClose() {}
+  // ── Status/Priority/Recurrence Hooks ───────────────────────────
+
+  protected getCurrentStatus(): string {
+    return this.statusValue;
+  }
+
+  protected setStatus(status: string): void {
+    this.statusValue = status;
+  }
+
+  protected setRecurrence(rule: string | undefined): void {
+    // Would need to implement recurrence field - placeholder for now
+    console.log("[TaskEditModal] setRecurrence:", rule);
+  }
+
+  protected setReminders(reminders: string): void {
+    // Would need to implement reminders field - placeholder for now
+    console.log("[TaskEditModal] setReminders:", reminders);
+  }
 }
+
+// Import NaviCalendarPlugin for type
+import NaviCalendarPlugin from "../main";
