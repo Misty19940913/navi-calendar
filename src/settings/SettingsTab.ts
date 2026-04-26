@@ -104,7 +104,7 @@ export class SettingsTab extends PluginSettingTab {
           })
       );
 
-    new Setting(containerEl)
+new Setting(containerEl)
       .setName("Task template")
       .setDesc("Path to task template file")
       .addText((text) =>
@@ -113,6 +113,33 @@ export class SettingsTab extends PluginSettingTab {
           .setValue(this.plugin.settings.taskTemplatePath)
           .onChange(async (value) => {
             this.plugin.settings.taskTemplatePath = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // ── Task Modal Preferences ─────────────────────────────────────
+    containerEl.createEl("h3", { text: "Task Modal Preferences" });
+
+    new Setting(containerEl)
+      .setName("Enable split layout")
+      .setDesc("Show expanded split layout with markdown editor by default")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.enableModalSplitLayout ?? false)
+          .onChange(async (value) => {
+            this.plugin.settings.enableModalSplitLayout = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Default to expanded")
+      .setDesc("Open task modals in expanded state by default")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.defaultExpanded ?? false)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultExpanded = value;
             await this.plugin.saveSettings();
           })
       );

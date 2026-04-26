@@ -157,6 +157,10 @@ export interface NaviCalendarSettings {
 
   // Status config
   statusConfig: Record<string, TaskStatus>;
+
+  // Task Modal
+  enableModalSplitLayout: boolean;
+  defaultExpanded: boolean;
 }
 
 export const DEFAULT_SETTINGS: Partial<NaviCalendarSettings> = {
@@ -177,6 +181,8 @@ export const DEFAULT_SETTINGS: Partial<NaviCalendarSettings> = {
   priorityUrgentColor: "#805ad5",
   overdueColor: "#e53e3e",
   blockedColor: "#a0aec0",
+  enableModalSplitLayout: false,
+  defaultExpanded: false,
   timeblockColor: "#3182ce",
   openDirection: "replace",
   miniCalendarEnabled: true,
