@@ -106,7 +106,7 @@ export interface ViewState {
 export interface NaviCalendarSettings {
   // Calendar file
   journalFolder: string;          // e.g. "journal/" — user must set on first use
-  journalTemplate: string;         // Template for daily notes (supports {{date}}, {{title}})
+  journalTemplatePath: string;         // Path to daily note template file
 
   // Appearance
   defaultView: ViewState["viewType"];
@@ -141,22 +141,7 @@ export interface NaviCalendarSettings {
 
 export const DEFAULT_SETTINGS: Partial<NaviCalendarSettings> = {
   journalFolder: "",
-  journalTemplate: `---\ndate: {{date}}\ntype: daily-note\nfolder: journal\ntags: [daily-note]\ntime_created: {{time_created}}\n---
-
-# {{title}}
-
-## Morning
-
-
-## Afternoon
-
-
-## Evening
-
-## Tasks
-
-## Notes
-`,
+  journalTemplatePath: "",
   defaultView: "dayGridMonth",
   firstDayOfWeek: 1,
   showWeekends: true,

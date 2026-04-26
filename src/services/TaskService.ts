@@ -6,7 +6,6 @@ import {
   TaskEditData,
   CalendarEvent,
   NaviCalendarSettings,
-  DEFAULT_SETTINGS,
 } from "../types";
 import NaviCalendarPlugin from "../main";
 
@@ -509,16 +508,30 @@ export class TaskService {
     let file = app.vault.getAbstractFileByPath(filePath);
 
     if (!file) {
-      // Resolve template variables
-      const template = settings.journalTemplate ?? (DEFAULT_SETTINGS.journalTemplate ?? "");
-      const title = format(parseISO(date), "MMMM d, yyyy");
-      const timeCreated = new Date().toISOString();
-      const resolved = template
-        .replace(/\{\{date\}\}/g, date)
-        .replace(/\{\{title\}\}/g, title)
-        .replace(/\{\{time_created\}\}/g, timeCreated);
+      let content = "";
+      const templatePath = settings.journalTemplatePath;
 
-      file = await app.vault.create(filePath, resolved);
+      if (templatePath) {
+        const templateFile = app.vault.getAbstractFileByPath(templatePath);
+        if (templateFile && templateFile instanceof TFile) {
+          content = await app.vault.read(templateFile);
+        }
+      }
+
+      // Fallback minimal content
+      if (!content) {
+        content = `---\ndate: ${date}\ntype: daily-note\n---\n\n# ${format(parseISO(date), "MMMM d, yyyy")}\n\n`;
+      } else {
+        // Resolve template variables
+        const title = format(parseISO(date), "MMMM d, yyyy");
+        const timeCreated = new Date().toISOString();
+        content = content
+          .replace(/\{\{date\}\}/g, date)
+          .replace(/\{\{title\}\}/g, title)
+          .replace(/\{\{time_created\}\}/g, timeCreated);
+      }
+
+      file = await app.vault.create(filePath, content);
     }
 
     return file as TFile;

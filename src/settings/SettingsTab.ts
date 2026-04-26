@@ -33,19 +33,16 @@ export class SettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Daily note template")
-      .setDesc("Template for new daily notes. Variables: {{date}}, {{title}}, {{time_created}}")
-      .addTextArea((text) =>
+      .setDesc("Path to your daily note template file (e.g. templates/daily.md). Supports {{date}}, {{title}}, {{time_created}}")
+      .addText((text) =>
         text
-          .setPlaceholder("---\ndate: {{date}}\n...\n# {{title}}")
-          .setValue(this.plugin.settings.journalTemplate)
+          .setPlaceholder("templates/daily.md")
+          .setValue(this.plugin.settings.journalTemplatePath)
           .onChange(async (value) => {
-            this.plugin.settings.journalTemplate = value;
+            this.plugin.settings.journalTemplatePath = value.trim();
             await this.plugin.saveSettings();
           })
-      )
-      .controlEl.style.width = "100%";
-
-    (containerEl.querySelector(".modal-setting-journalTemplate textarea") as HTMLTextAreaElement)?.setAttribute("rows", "12");
+      );
 
     // ── View Preferences ─────────────────────────────────────
     containerEl.createEl("h3", { text: "View Preferences" });
