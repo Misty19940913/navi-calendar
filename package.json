@@ -1,0 +1,28 @@
+{
+	"name": "navi-calendar",
+	"version": "0.1.0",
+	"description": "Life OS Calendar Plugin — Day/Week/Month/Timeline views with full task integration",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit --skipLibCheck && node esbuild.config.mjs production",
+		"copy-vault": "node scripts/copy-to-vault.mjs"
+	},
+	"keywords": [],
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"@fullcalendar/core": "^6.1.17",
+		"@fullcalendar/daygrid": "^6.1.17",
+		"@fullcalendar/timegrid": "^6.1.17",
+		"@fullcalendar/list": "^6.1.17",
+		"@fullcalendar/interaction": "^6.1.17",
+		"@fullcalendar/multimonth": "^6.1.17",
+		"date-fns": "^4.1.0",
+		"esbuild": "^0.25.9",
+		"obsidian": "latest",
+		"svelte": "^5.0.0",
+		"typescript": "^5.9.2"
+	}
+}

@@ -1,0 +1,168 @@
+/* Navi Calendar Plugin — Styles */
+
+:root {
+  --navi-cal-primary: #3182ce;
+  --navi-cal-text: #2d3748;
+  --navi-cal-bg: #ffffff;
+  --navi-cal-border: #e2e8f0;
+  --navi-cal-today: #ebf8ff;
+  --navi-cal-event-height: 24px;
+}
+
+.theme-dark {
+  --navi-cal-primary: #63b3ed;
+  --navi-cal-text: #e2e8f0;
+  --navi-cal-bg: #1a202c;
+  --navi-cal-border: #2d3748;
+  --navi-cal-today: #2a4365;
+}
+
+/* ── Calendar Container ─────────────────────────────────── */
+.navi-calendar-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: var(--navi-cal-text);
+  background: var(--navi-cal-bg);
+  height: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+/* ── FullCalendar Overrides ─────────────────────────────── */
+/* These need !important to override FullCalendar defaults */
+.navi-calendar-container .fc {
+  font-family: inherit !important;
+  font-size: inherit !important;
+}
+
+.navi-calendar-container .fc-toolbar-title {
+  font-size: 1.2em !important;
+  font-weight: 600 !important;
+}
+
+.navi-calendar-container .fc-button {
+  background: var(--navi-cal-primary) !important;
+  border-color: var(--navi-cal-primary) !important;
+  font-size: 0.85em !important;
+  padding: 4px 10px !important;
+  border-radius: 4px !important;
+}
+
+.navi-calendar-container .fc-button:hover {
+  opacity: 0.85;
+}
+
+.navi-calendar-container .fc-button-active {
+  background: var(--navi-cal-primary) !important;
+  opacity: 1 !important;
+}
+
+.navi-calendar-container .fc-daygrid-day,
+.navi-calendar-container .fc-timegrid-col {
+  border-color: var(--navi-cal-border) !important;
+}
+
+.navi-calendar-container .fc-day-today {
+  background: var(--navi-cal-today) !important;
+}
+
+.navi-calendar-container .fc-day-today .fc-daygrid-day-number {
+  background: var(--navi-cal-primary);
+  color: white !important;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navi-calendar-container .fc-event {
+  border-radius: 4px !important;
+  padding: 2px 4px !important;
+  font-size: 0.85em !important;
+  cursor: pointer !important;
+  border: none !important;
+}
+
+.navi-calendar-container .fc-event:hover {
+  opacity: 0.85;
+}
+
+.navi-calendar-container .fc-event-main {
+  padding: 2px 4px;
+}
+
+.navi-calendar-container .fc-timegrid-slot {
+  height: 32px !important;
+}
+
+.navi-calendar-container .fc-scrollgrid {
+  border-color: var(--navi-cal-border) !important;
+}
+
+/* ── Event Colors ───────────────────────────────────────── */
+.navi-calendar-container .fc-event.navi-cal-blocked {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  text-decoration: line-through;
+}
+
+/* ── Task Event Content ─────────────────────────────────── */
+.navi-cal-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navi-cal-time {
+  font-size: 0.8em;
+  opacity: 0.8;
+  margin-right: 4px;
+}
+
+/* ── Mini Calendar ──────────────────────────────────────── */
+.navi-mini-cal-placeholder,
+.navi-timeline-placeholder {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+/* ── Drag & Drop ────────────────────────────────────────── */
+.navi-calendar-container .fc-event-dragging {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  opacity: 0.9;
+}
+
+/* ── Select Mirror (creating timeblocks) ───────────────── */
+.navi-calendar-container .fc-selection-mirror {
+  background: var(--navi-cal-primary) !important;
+  opacity: 0.3 !important;
+}
+
+/* ── Now Indicator ──────────────────────────────────────── */
+.navi-calendar-container .fc-timegrid-now-indicator-line {
+  border-color: #e53e3e !important;
+}
+
+.navi-calendar-container .fc-timegrid-now-indicator-arrow {
+  border-color: #e53e3e !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+}
+
+/* ── Modal Overrides ────────────────────────────────────── */
+.navi-calendar-container input[type="text"],
+.navi-calendar-container input[type="date"] {
+  border: 1px solid var(--navi-cal-border) !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  background: var(--navi-cal-bg) !important;
+  color: var(--navi-cal-text) !important;
+}
