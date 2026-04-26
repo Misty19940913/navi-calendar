@@ -13,7 +13,51 @@ export class SettingsTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "📅 Navi Calendar — Settings" });
+
+    // ── Plugin Header ────────────────────────────────────────────
+    containerEl.createDiv("navi-cal-header", (el) => {
+      el.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--background-modifier-border);
+        margin-bottom: 16px;
+      `;
+
+      // Left: plugin icon + name + version
+      el.createDiv("navi-cal-header-left", (left) => {
+        left.style.cssText = "display: flex; align-items: center; gap: 12px;";
+        left.createEl("span", { text: "📅", attr: { style: "font-size: 28px;" } });
+        left.createDiv("navi-cal-header-info", (info) => {
+          info.style.cssText = "display: flex; flex-direction: column; gap: 2px;";
+          info.createEl("strong", { text: "Navi Calendar" });
+          info.createEl("span", {
+            text: `Version ${(this.plugin as any).manifest?.version || "0.1.0"}`,
+            attr: { style: "color: var(--text-muted); font-size: 0.85em;" }
+          });
+        });
+      });
+
+      // Right: Check updates button
+      const versionBtn = el.createEl("button", {
+        text: "Check for Updates",
+        attr: {
+          style: `
+            background: var(--interactive-accent);
+            color: var(--text-on-accent);
+            border: none;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 13px;
+            cursor: pointer;
+          `
+        }
+      });
+      versionBtn.onclick = () => {
+        window.open("https://github.com/Misty19940913/navi-calendar/releases", "_blank");
+      };
+    });
 
     // ── Required: Journal Folder ──────────────────────────────
     containerEl.createEl("h3", { text: "Required Setup" });

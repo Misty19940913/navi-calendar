@@ -182,16 +182,6 @@ export class CalendarView extends ItemView {
           }).open();
         }
       },
-      // ── Date Click: Open daily note ────────────────────────
-      dateClick: (info: any) => {
-        const dateStr = format(info.date, "yyyy-MM-dd");
-        const naviPlugin = this.plugin;
-        const direction = info.jsEvent?.shiftKey
-          ? "split-right"
-          : (naviPlugin?.settings?.openDirection || "split-right");
-
-        this.taskService.openDailyNote(dateStr, direction);
-      },
       // ── Event Drag & Drop: Update due date ────────────────
       eventDrop: async (info: any) => {
         const task = info.event.extendedProps?.task;
@@ -311,6 +301,22 @@ export class CalendarView extends ItemView {
         .setIcon("play")
         .onClick(() => {
           new Notice("Create time entry — 尚未實作");
+        });
+    });
+
+    menu.addItem((item) => {
+      item.setTitle("Open daily note")
+        .setIcon("calendar")
+        .onClick(() => {
+          const dateStr = info.allDay
+            ? (info.startStr ? info.startStr.split("T")[0] : undefined)
+            : (info.startStr ? info.startStr.split("T")[0] : undefined);
+          if (dateStr) {
+            const direction = info.jsEvent?.shiftKey
+              ? "split-right"
+              : (this.plugin?.settings?.openDirection || "split-right");
+            this.taskService.openDailyNote(dateStr, direction);
+          }
         });
     });
 
