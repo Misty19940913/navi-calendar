@@ -80,9 +80,17 @@ export class CalendarView extends ItemView {
     const style = document.createElement("style");
     style.id = "navi-calendar-custom-styles";
     style.textContent = `
-      /* Today override: blue circle, no default orange */
-      .fc-day-today > .fc-daygrid-day-frame > .fc-daygrid-day-top > .fc-daygrid-day-number,
-      .fc-day-today .fc-col-header-cell-cushion {
+      /* Today: blue circle, perfectly centered in cell */
+      .fc-day-today > .fc-daygrid-day-frame > .fc-daygrid-day-top {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .fc-day-today > .fc-daygrid-day-frame > .fc-daygrid-day-top > .fc-daygrid-day-number {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         background: #1a73e8 !important;
         color: #ffffff !important;
         border-radius: 50% !important;
@@ -95,6 +103,7 @@ export class CalendarView extends ItemView {
         font-weight: 600 !important;
       }
       .fc-day-today > .fc-daygrid-day-frame {
+        position: relative;
         background: rgba(26, 115, 232, 0.08) !important;
       }
       .fc-daygrid-day-number {
