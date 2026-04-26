@@ -44,6 +44,35 @@ export class SettingsTab extends PluginSettingTab {
           })
       );
 
+    // ── Task Settings ─────────────────────────────────────────
+    containerEl.createEl("h3", { text: "Task Settings" });
+
+    new Setting(containerEl)
+      .setName("Task folder")
+      .setDesc("Folder where task .md files are stored")
+      .addText((text) =>
+        text
+          .setPlaceholder("tasks/")
+          .setValue(this.plugin.settings.taskFolder)
+          .onChange(async (value) => {
+            this.plugin.settings.taskFolder = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Task template")
+      .setDesc("Path to task template file")
+      .addText((text) =>
+        text
+          .setPlaceholder("templates/task.md")
+          .setValue(this.plugin.settings.taskTemplatePath)
+          .onChange(async (value) => {
+            this.plugin.settings.taskTemplatePath = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ── View Preferences ─────────────────────────────────────
     containerEl.createEl("h3", { text: "View Preferences" });
 

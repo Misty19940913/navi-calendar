@@ -6,6 +6,7 @@ import {
   TaskEditData,
   CalendarEvent,
   NaviCalendarSettings,
+  TaskPriority,
 } from "../types";
 import NaviCalendarPlugin from "../main";
 
@@ -253,6 +254,92 @@ export class TaskService {
       };
     }
     return created;
+  }
+
+  // ── File-based Task Creation ─────────────────────────────────
+
+  async createTaskAsFile(data: {
+    title: string;
+    scheduled?: string;
+    due?: string;
+    startTime?: string;
+    endTime?: string;
+  }): Promise<TaskInfo | null> {
+    const { app, settings } = this.plugin;
+    
+    // 1. Determine folder
+    const folder = settings.taskFolder || "tasks/";
+    const normalizedFolder = folder.endsWith("/") ? folder : folder + "/";
+    
+    // 2. Read template if path is set and file exists
+    let content = "";
+    if (settings.taskTemplatePath) {
+      try {
+        content = await app.vault.adapter.read(settings.taskTemplatePath);
+        // Process template variables
+        const now = new Date().toISOString();
+        content = content
+          .replace(/\{\{date\}\}/g, now.split("T")[0])
+          .replace(/\{\{time_created\}\}/g, now)
+          .replace(/\{\{title\}\}/g, data.title);
+      } catch {
+        // Template file not found, use default
+        content = "";
+      }
+    }
+    
+    // 3. Build frontmatter
+    const frontmatter: Record<string, any> = {
+      type: "task",
+      status: " ",
+      time_created: new Date().toISOString(),
+    };
+    if (data.scheduled) frontmatter.scheduled = data.scheduled;
+    if (data.due) frontmatter.due = data.due;
+    if (data.startTime) frontmatter.startTime = data.startTime;
+    if (data.endTime) frontmatter.endTime = data.endTime;
+    
+    // 4. Serialize frontmatter
+    const fmLines = Object.entries(frontmatter)
+      .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+      .join("\n");
+    
+    // 5. Build file content
+    const body = content.trim() ? `\n\n${content.trim()}` : "";
+    const fileContent = `---\n${fmLines}\n---\n# ${data.title}${body}`;
+    
+    // 6. Generate filename
+    const slug = data.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .substring(0, 50);
+    const filename = `${slug}-${Date.now()}.md`;
+    const filePath = `${normalizedFolder}${filename}`;
+    
+    // 7. Ensure folder exists
+    try {
+      await app.vault.adapter.mkdir(normalizedFolder);
+    } catch { /* already exists */ }
+    
+    // 8. Create file
+    try {
+      await app.vault.adapter.write(filePath, fileContent);
+      
+      return {
+        id: `${filePath}:0`,
+        title: data.title,
+        status: " ",
+        priority: "none" as TaskPriority,
+        scheduled: data.scheduled,
+        due: data.due,
+        path: filePath,
+        line: 1,
+      };
+    } catch (err) {
+      console.error("[NaviCalendar] createTask error:", err);
+      return null;
+    }
   }
 
   async updateTask(

@@ -2,6 +2,7 @@ import {
   ItemView,
   WorkspaceLeaf,
   Notice,
+  Menu,
 } from "obsidian";
 import { format } from "date-fns";
 import { Calendar } from "@fullcalendar/core";
@@ -227,31 +228,10 @@ export class CalendarView extends ItemView {
         }
       },
       // ── Select (drag to create timeblock) ──────────────────
-      select: (info: any) => {
-        const startStr = format(info.start, "yyyy-MM-dd");
-        const startTimeStr = format(info.start, "HH:mm");
-        const endTimeStr = format(info.end, "HH:mm");
-
-        const naviPlugin = this.plugin;
-        if (naviPlugin) {
-          new TaskCreationModal(
-            naviPlugin,
-            {
-              scheduled: startStr,
-              startTime: startTimeStr,
-              endTime: endTimeStr,
-            },
-            () => {
-              this.refresh();
-            }
-          ).open();
-        }
-
-        this.calendar?.unselect();
-      },
+      select: (info: any) => this.handleDateSelect(info),
       // ── Task Creation ───────────────────────────────────────
       selectable: true,
-      selectMirror: true,
+      selectMirror: false,
       editable: true,
       eventDurationEditable: true,
       // ── Custom rendering ────────────────────────────────────
@@ -295,6 +275,47 @@ export class CalendarView extends ItemView {
     });
 
     this.calendar.render();
+  }
+
+  private async handleDateSelect(info: any): Promise<void> {
+    const menu = new Menu();
+
+    menu.addItem((item) => {
+      item.setTitle("Create task")
+        .setIcon("check-square")
+        .onClick(async () => {
+          const values = {
+            title: "",
+            scheduled: info.allDay 
+              ? (info.startStr ? info.startStr.split("T")[0] : undefined)
+              : (info.startStr ? info.startStr.split("T")[0] : undefined),
+            due: undefined,
+            startTime: info.allDay ? undefined : (info.startStr ? info.startStr.split("T")[1]?.substring(0, 5) : undefined),
+            endTime: info.allDay ? undefined : (info.endStr ? info.endStr.split("T")[1]?.substring(0, 5) : undefined),
+          };
+          const modal = new TaskCreationModal(
+            this.plugin,
+            {
+              prePopulatedValues: values,
+              onTaskCreated: () => {
+                this.refresh();
+              }
+            }
+          );
+          modal.open();
+        });
+    });
+
+    menu.addItem((item) => {
+      item.setTitle("Create time entry")
+        .setIcon("play")
+        .onClick(() => {
+          new Notice("Create time entry — 尚未實作");
+        });
+    });
+
+    menu.showAtMouseEvent(info.jsEvent as MouseEvent);
+    this.calendar?.unselect();
   }
 
   private getPriorityIcon(priority: string): string {

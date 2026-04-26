@@ -107,6 +107,8 @@ export interface NaviCalendarSettings {
   // Calendar file
   journalFolder: string;          // e.g. "journal/" — user must set on first use
   journalTemplatePath: string;         // Path to daily note template file
+  taskFolder: string;          // e.g. "tasks/" — where task .md files are stored
+  taskTemplatePath: string;   // Path to task template file
 
   // Appearance
   defaultView: ViewState["viewType"];
@@ -142,6 +144,8 @@ export interface NaviCalendarSettings {
 export const DEFAULT_SETTINGS: Partial<NaviCalendarSettings> = {
   journalFolder: "",
   journalTemplatePath: "",
+  taskFolder: "",
+  taskTemplatePath: "",
   defaultView: "dayGridMonth",
   firstDayOfWeek: 1,
   showWeekends: true,
