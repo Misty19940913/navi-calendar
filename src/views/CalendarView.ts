@@ -276,26 +276,61 @@ export class CalendarView extends ItemView {
     if (existing) existing.remove();
 
     const dropdown = this.contentEl.createDiv("navi-view-dropdown");
-    dropdown.style.position = "relative";
-    dropdown.style.zIndex = "9999";
+    dropdown.style.cssText = `
+      position: absolute;
+      z-index: 9999;
+      width: 200px;
+      background: #ffffff;
+      border: 1px solid #DADCE0;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      padding: 4px 0;
+      overflow: hidden;
+    `;
 
     views.forEach(v => {
-      const item = dropdown.createDiv("navi-view-item");
-      item.style.padding = "8px 16px";
-      item.style.cursor = "pointer";
-      item.style.display = "flex";
-      item.style.alignItems = "center";
-      item.style.gap = "8px";
-      item.style.fontSize = "14px";
-      item.style.borderBottom = "1px solid var(--background-secondary)";
+      const isSelected = v.id === current;
 
-      if (v.id === current) {
-        item.style.background = "var(--background-secondary)";
-        item.style.fontWeight = "600";
+      const item = dropdown.createDiv("navi-view-item");
+      item.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 14px;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+        color: #202124;
+        transition: background 0.15s ease;
+        user-select: none;
+      `;
+
+      // Checkmark for selected item
+      if (isSelected) {
+        const check = item.createSpan("navi-view-check");
+        check.style.cssText = `margin-right: 4px;`;
+        check.textContent = "✓";
+        check.style.color = "#1a73e8";
+        check.style.fontSize = "14px";
       }
 
-      (item as any).createSpan({ text: v.icon });
-      (item as any).createSpan({ text: v.label });
+      // Emoji icon
+      const icon = item.createSpan("navi-view-icon");
+      icon.style.cssText = `font-size: 16px; width: 20px; text-align: center;`;
+      icon.textContent = v.icon;
+
+      // Label
+      const label = item.createSpan("navi-view-label");
+      label.style.cssText = isSelected ? `font-weight: 500; color: #1a73e8;` : `font-weight: 400;`;
+      label.textContent = v.label;
+
+      // Hover effect using native DOM events
+      item.onmouseenter = () => {
+        if (!isSelected) item.style.background = "#F1F3F4";
+      };
+      item.onmouseleave = () => {
+        item.style.background = "";
+      };
 
       item.onClickEvent((e: MouseEvent) => {
         e.stopPropagation();
@@ -317,19 +352,13 @@ export class CalendarView extends ItemView {
       contentElAny.on("click", closeHandler);
     }, 10);
 
-    // Position near the button
+    // Position: anchored bottom-right of the trigger button
     const btn = this.contentEl.querySelector(".fc-viewSelector-button") as HTMLElement;
     if (btn) {
       const rect = btn.getBoundingClientRect();
       const containerRect = this.contentEl.getBoundingClientRect();
-      dropdown.style.position = "absolute";
-      dropdown.style.top = `${rect.bottom - containerRect.top}px`;
+      dropdown.style.top = `${rect.bottom - containerRect.top + 4}px`;
       dropdown.style.right = `0px`;
-      dropdown.style.background = "var(--background)";
-      dropdown.style.border = "1px solid var(--border)";
-      dropdown.style.borderRadius = "6px";
-      dropdown.style.minWidth = "140px";
-      dropdown.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
     }
   }
 
