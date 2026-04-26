@@ -69,7 +69,6 @@ export interface TaskCreationData {
 }
 
 export interface TaskEditData extends Partial<TaskCreationData> {
-  id: string;
   completed?: boolean;          // Toggle completion
   delete?: boolean;              // Delete task
 }

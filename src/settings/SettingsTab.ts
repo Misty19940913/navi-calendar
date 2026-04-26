@@ -1,5 +1,6 @@
 import { PluginSettingTab, Setting, Notice } from "obsidian";
 import NaviCalendarPlugin from "../main";
+import { NaviCalendarSettings } from "../types";
 
 export class SettingsTab extends PluginSettingTab {
   plugin: NaviCalendarPlugin;
@@ -159,7 +160,7 @@ export class SettingsTab extends PluginSettingTab {
     // ── Colors ────────────────────────────────────────────────
     containerEl.createEl("h3", { text: "Colors" });
 
-    const colorFields: Array<{ key: keyof typeof this.plugin.settings; label: string }> = [
+    const colorFields: Array<{ key: keyof NaviCalendarSettings; label: string }> = [
       { key: "priorityHighColor", label: "High priority" },
       { key: "priorityMediumColor", label: "Medium priority" },
       { key: "priorityLowColor", label: "Low priority" },
@@ -170,13 +171,14 @@ export class SettingsTab extends PluginSettingTab {
     ];
 
     for (const { key, label } of colorFields) {
+      const k = key as string;
       new Setting(containerEl)
         .setName(label)
         .addColorPicker((color) =>
           color
-            .setValue(this.plugin.settings[key] as string)
+            .setValue(this.plugin.settings[k as keyof NaviCalendarSettings] as string)
             .onChange(async (value) => {
-              (this.plugin.settings as any)[key] = value;
+              (this.plugin.settings as unknown as Record<string, string>)[k] = value;
               await this.plugin.saveSettings();
             })
         );

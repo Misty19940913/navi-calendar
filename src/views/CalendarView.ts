@@ -20,6 +20,7 @@ import { TaskService } from "../services/TaskService";
 export class CalendarView extends ItemView {
   private calendar: Calendar | null = null;
   private taskService: TaskService;
+  private plugin: NaviCalendarPlugin;
 
   // Debounce
   private _dataUpdateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -28,6 +29,7 @@ export class CalendarView extends ItemView {
   constructor(leaf: WorkspaceLeaf, plugin: NaviCalendarPlugin) {
     super(leaf);
     console.log("[navi-calendar] CalendarView constructor called");
+    this.plugin = plugin;
     this.taskService = plugin.taskService;
   }
 
@@ -52,10 +54,6 @@ export class CalendarView extends ItemView {
     await this.initCalendar();
   }
 
-  override async onClose() {
-    this.destroy();
-  }
-
   private async initCalendar() {
     // contentEl comes from ItemView base class
     this.contentEl.innerHTML = "";
@@ -66,14 +64,15 @@ export class CalendarView extends ItemView {
     await this.buildCalendar(calendarEl);
 
     this.registerEvent(
-      this.app.workspace.on(EVENT_DATA_CHANGED, () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.app.workspace.on(EVENT_DATA_CHANGED as any, () => {
         this.debouncedRefresh();
       })
     );
   }
 
   private async buildCalendar(containerEl: HTMLElement) {
-    const plugin = (this.app.plugins.plugins["navi-calendar"] as NaviCalendarPlugin | undefined);
+    const plugin = this.plugin;
     const settings = plugin?.settings;
     const defaultView = settings?.defaultView || "dayGridMonth";
 
@@ -105,7 +104,7 @@ export class CalendarView extends ItemView {
         const task = info.event.extendedProps?.task;
         if (!task) return;
 
-        const naviPlugin = this.app.plugins.plugins["navi-calendar"] as NaviCalendarPlugin;
+        const naviPlugin = this.plugin;
         if (naviPlugin) {
           new TaskEditModal(naviPlugin, task, () => {
             this.refresh();
@@ -115,7 +114,7 @@ export class CalendarView extends ItemView {
       // ── Date Click: Open daily note ────────────────────────
       dateClick: (info: any) => {
         const dateStr = format(info.date, "yyyy-MM-dd");
-        const naviPlugin = this.app.plugins.plugins["navi-calendar"] as NaviCalendarPlugin;
+        const naviPlugin = this.plugin;
         const direction = info.jsEvent?.shiftKey
           ? "split-right"
           : (naviPlugin?.settings?.openDirection || "split-right");
@@ -130,7 +129,7 @@ export class CalendarView extends ItemView {
         const newDate = format(info.event.start!, "yyyy-MM-dd");
         try {
           await this.taskService.updateTask(task.id, { due: newDate });
-          const naviPlugin = this.app.plugins.plugins["navi-calendar"] as NaviCalendarPlugin;
+          const naviPlugin = this.plugin;
           naviPlugin?.triggerDataChanged();
         } catch (e) {
           info.revert();
@@ -150,7 +149,7 @@ export class CalendarView extends ItemView {
             startTime: newStart,
             endTime: newEnd,
           } as any);
-          const naviPlugin = this.app.plugins.plugins["navi-calendar"] as NaviCalendarPlugin;
+          const naviPlugin = this.plugin;
           naviPlugin?.triggerDataChanged();
         } catch (e) {
           info.revert();
@@ -163,7 +162,7 @@ export class CalendarView extends ItemView {
         const startTimeStr = format(info.start, "HH:mm");
         const endTimeStr = format(info.end, "HH:mm");
 
-        const naviPlugin = this.app.plugins.plugins["navi-calendar"] as NaviCalendarPlugin;
+        const naviPlugin = this.plugin;
         if (naviPlugin) {
           new TaskCreationModal(
             naviPlugin,
@@ -272,14 +271,14 @@ export class CalendarView extends ItemView {
 
   // ── Cleanup ─────────────────────────────────────────────────
 
-  override destroy() {
+  override async onClose() {
     if (this._dataUpdateTimer) {
       clearTimeout(this._dataUpdateTimer);
+      this._dataUpdateTimer = null;
     }
     if (this.calendar) {
       this.calendar.destroy();
       this.calendar = null;
     }
-    super.destroy();
   }
 }

@@ -1,4 +1,4 @@
-import { TFile, App, Vault, CacheableMetadata, WorkspaceLeaf } from "obsidian";
+import { TFile, App, Vault, CachedMetadata, WorkspaceLeaf } from "obsidian";
 import { format, parseISO, isToday, isBefore, addDays } from "date-fns";
 import {
   TaskInfo,
@@ -68,8 +68,7 @@ export class TaskService {
       const lines = content.split("\n");
       const cache = this.plugin.app.metadataCache.getFileCache(file);
 
-      // Get task items from Obsidian's built-in parser
-      const taskItems = cache?.tasks || [];
+      // Get task items from Obsidian's built-in parser (tasks exist in cache.lists for Tasks plugin compatibility)
       const frontmatter = cache?.frontmatter;
 
       // Also parse manually for better control
@@ -83,8 +82,7 @@ export class TaskService {
             taskMatch[2],
             file.path,
             i + 1,
-            frontmatter,
-            taskItems
+            frontmatter
           );
           if (task) tasks.push(task);
         }
@@ -101,8 +99,7 @@ export class TaskService {
     statusChar: string,
     path: string,
     line: number,
-    frontmatter?: CacheableMetadata["frontmatter"],
-    taskItems?: any[]
+    frontmatter?: CachedMetadata["frontmatter"]
   ): TaskInfo | null {
     // Extract title (before any #tag or due date)
     let title = raw
@@ -171,9 +168,6 @@ export class TaskService {
         tags = Array.isArray(frontmatter.tags) ? frontmatter.tags : [frontmatter.tags];
       }
     }
-
-    // Use Obsidian's task items for more accurate status detection
-    const taskItem = taskItems?.find((t: any) => t.position.start.line === line - 1);
 
     const id = `${path}:${line}`;
 
@@ -537,7 +531,7 @@ export class TaskService {
       leaf = workspace.getLeaf("tab");
     } else {
       // "replace" or default: reuse active leaf or create one
-      leaf = workspace.getActiveLeaf() || workspace.getLeaf(false);
+      leaf = workspace.activeLeaf || workspace.getLeaf(false);
     }
 
     await leaf.openFile(file);

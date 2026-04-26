@@ -269,7 +269,7 @@ export default class NaviCalendarPlugin extends Plugin {
       leaf = workspace.getLeaf("tab");
     } else {
       // "replace" — use active leaf or create one without splitting
-      leaf = workspace.getActiveLeaf() || workspace.getLeaf(false);
+      leaf = workspace.activeLeaf || workspace.getLeaf(false);
     }
 
     if (!leaf) {
