@@ -90,9 +90,9 @@ export class CalendarView extends ItemView {
       },
       customButtons: {
         viewSelector: {
-          text: this.plugin?.settings?.defaultView === "dayGridMonth" ? "Month ▾" :
-                this.plugin?.settings?.defaultView === "timeGridWeek" ? "Week ▾" :
-                this.plugin?.settings?.defaultView === "timeGridDay" ? "Day ▾" : "Month ▾",
+          text: this.plugin?.settings?.defaultView === "dayGridMonth" ? "Month" :
+                this.plugin?.settings?.defaultView === "timeGridWeek" ? "Week" :
+                this.plugin?.settings?.defaultView === "timeGridDay" ? "Day" : "Month",
           click: () => {
             this.showViewDropdown();
           },
@@ -257,10 +257,10 @@ export class CalendarView extends ItemView {
 
   private showViewDropdown() {
     const views = [
-      { id: "dayGridMonth", label: "Month", icon: "📅" },
-      { id: "timeGridWeek", label: "Week", icon: "📆" },
-      { id: "timeGridDay", label: "Day", icon: "🗓️" },
-      { id: "listWeek", label: "List", icon: "📋" },
+      { id: "dayGridMonth", label: "Month" },
+      { id: "timeGridWeek", label: "Week" },
+      { id: "timeGridDay", label: "Day" },
+      { id: "listWeek", label: "List" },
     ];
 
     const current = this.calendar?.view?.type || "dayGridMonth";
@@ -268,7 +268,7 @@ export class CalendarView extends ItemView {
   }
 
   private createViewDropdownDOM(
-    views: Array<{ id: string; label: string; icon: string }>,
+    views: Array<{ id: string; label: string }>,
     current: string
   ) {
     // Remove existing dropdown if any
@@ -314,10 +314,7 @@ export class CalendarView extends ItemView {
         check.style.fontSize = "14px";
       }
 
-      // Emoji icon
-      const icon = item.createSpan("navi-view-icon");
-      icon.style.cssText = `font-size: 16px; width: 20px; text-align: center;`;
-      icon.textContent = v.icon;
+      // Emoji icon removed per user request
 
       // Label
       const label = item.createSpan("navi-view-label");
@@ -369,12 +366,12 @@ export class CalendarView extends ItemView {
       const btn = this.contentEl.querySelector(".fc-viewSelector-button") as HTMLElement;
       if (btn) {
         const labels: Record<string, string> = {
-          dayGridMonth: "Month ▾",
-          timeGridWeek: "Week ▾",
-          timeGridDay: "Day ▾",
-          listWeek: "List ▾",
+          dayGridMonth: "Month",
+          timeGridWeek: "Week",
+          timeGridDay: "Day",
+          listWeek: "List",
         };
-        btn.textContent = labels[viewId] || "Month ▾";
+        btn.textContent = labels[viewId] || "Month";
       }
     }
   }
