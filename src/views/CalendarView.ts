@@ -80,17 +80,13 @@ export class CalendarView extends ItemView {
     const style = document.createElement("style");
     style.id = "navi-calendar-custom-styles";
     style.textContent = `
-      /* Today: blue circle, perfectly centered in cell */
+      /* Today: blue circle, horizontally centered, vertically at top */
       .fc-day-today > .fc-daygrid-day-frame > .fc-daygrid-day-top {
         display: flex;
         justify-content: center;
-        align-items: center;
+        align-items: flex-start;
       }
       .fc-day-today > .fc-daygrid-day-frame > .fc-daygrid-day-top > .fc-daygrid-day-number {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
         background: #1a73e8 !important;
         color: #ffffff !important;
         border-radius: 50% !important;
