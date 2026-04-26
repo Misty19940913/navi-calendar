@@ -76,6 +76,39 @@ export class CalendarView extends ItemView {
     const settings = plugin?.settings;
     const defaultView = settings?.defaultView || "dayGridMonth";
 
+    // Inject Google Calendar-style CSS overrides
+    const style = document.createElement("style");
+    style.id = "navi-calendar-custom-styles";
+    style.textContent = `
+      /* Date number: horizontal center, vertical top */
+      .fc-daygrid-day-number {
+        text-align: center !important;
+        width: 100%;
+        display: block;
+      }
+      .fc-daygrid-day-top {
+        flex-direction: column;
+        align-items: center;
+      }
+      .fc-daygrid-day-frame {
+        min-height: unset;
+      }
+      .fc-daygrid-day-events {
+        margin-top: 2px;
+      }
+      /* Week / TimeGrid day number styling */
+      .fc-timegrid-day-number {
+        text-align: center !important;
+        width: 100%;
+        display: block;
+      }
+      /* List view date styling */
+      .fc-list-day-text {
+        text-align: center !important;
+      }
+    `;
+    containerEl.appendChild(style);
+
     this.calendar = new Calendar(containerEl, {
       plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, multimonthPlugin],
       initialView: defaultView,
