@@ -450,6 +450,7 @@ export class TaskService {
     // Helper: update or append a frontmatter key
     const updateFm = (key: string, value: any) => {
       if (fmStart === -1 || fmEnd === -1) return; // No frontmatter block
+      if (value === undefined || value === null) return; // Skip null/undefined
       const pattern = new RegExp(`^(\\s*)${key}:\\s*`);
       let found = false;
       for (let i = fmStart + 1; i < fmEnd; i++) {

@@ -504,10 +504,15 @@ export abstract class TaskModal extends Modal {
       pill.textContent = sub;
       const removeBtn = pill.createEl("button", { text: "❌" });
       removeBtn.style.cssText = "background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 10px;";
-      removeBtn.onclick = () => {
-        const current = ((this as any).task.subtasks as string[]).filter((s: string) => s !== sub);
-        ((this as any).task as any).subtasks = current;
-        pill.remove();
+      removeBtn.onclick = async () => {
+        try {
+          const current = ((this as any).task.subtasks as string[]).filter((s: string) => s !== sub);
+          await this.plugin.taskService.updateTask((this as any).task.id, { subtasks: current });
+          ((this as any).task as any).subtasks = current;
+          pill.remove();
+        } catch (err) {
+          new Notice(`Failed to remove subtask: ${err instanceof Error ? err.message : String(err)}`);
+        }
       };
     }
   }
@@ -520,9 +525,19 @@ export abstract class TaskModal extends Modal {
     }
   }
 
-  protected onAddSubtask?: (subtaskId: string) => void;
+  // Action-bar menu methods — can be overridden by subclass for direct file sync
+  protected async onAddDependency(type: "blockedBy" | "blocking", taskId: string): Promise<void> {
+    // Default: no-op. Subclass should override to persist changes.
+    console.log("[TaskModal] onAddDependency:", type, taskId);
+  }
 
-  // ── Dependencies Section ──────────────────────────────────────
+  protected async onAddSubtask(subtaskId: string): Promise<void> {
+    console.log("[TaskModal] onAddSubtask:", subtaskId);
+  }
+
+  protected async onAddProject(projectName: string): Promise<void> {
+    console.log("[TaskModal] onAddProject:", projectName);
+  }
 
   protected renderDependenciesSection(container: HTMLElement) {
     const section = container.createDiv("task-modal-dependencies");
@@ -593,7 +608,16 @@ export abstract class TaskModal extends Modal {
         pill.textContent = id;
         const removeBtn = pill.createEl("button", { text: "❌" });
         removeBtn.style.cssText = "background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 10px;";
-        removeBtn.onclick = () => pill.remove();
+        removeBtn.onclick = async () => {
+          try {
+            const updated = (blockedBy as string[]).filter((b: string) => b !== id);
+            await this.plugin.taskService.updateTask((this as any).task.id, { blockedBy: updated });
+            ((this as any).task as any).blockedBy = updated;
+            pill.remove();
+          } catch (err) {
+            new Notice(`Failed to remove blocker: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        };
       }
     }
 
@@ -606,7 +630,16 @@ export abstract class TaskModal extends Modal {
         pill.textContent = id;
         const removeBtn = pill.createEl("button", { text: "❌" });
         removeBtn.style.cssText = "background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 10px;";
-        removeBtn.onclick = () => pill.remove();
+        removeBtn.onclick = async () => {
+          try {
+            const updated = (blocking as string[]).filter((b: string) => b !== id);
+            await this.plugin.taskService.updateTask((this as any).task.id, { blocking: updated });
+            ((this as any).task as any).blocking = updated;
+            pill.remove();
+          } catch (err) {
+            new Notice(`Failed to remove blocking: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        };
       }
     }
   }
@@ -617,8 +650,6 @@ export abstract class TaskModal extends Modal {
       this.onAddDependency?.(type, taskId);
     }
   }
-
-  protected onAddDependency?: (type: "blockedBy" | "blocking", taskId: string) => void;
 
   // ── Projects Section ──────────────────────────────────────────
 
@@ -677,7 +708,16 @@ export abstract class TaskModal extends Modal {
       pill.textContent = `📁 ${proj}`;
       const removeBtn = pill.createEl("button", { text: "❌" });
       removeBtn.style.cssText = "background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 10px;";
-      removeBtn.onclick = () => pill.remove();
+      removeBtn.onclick = async () => {
+        try {
+          const updated = (projects as string[]).filter((p: string) => p !== proj);
+          await this.plugin.taskService.updateTask((this as any).task.id, { projects: updated });
+          ((this as any).task as any).projects = updated;
+          pill.remove();
+        } catch (err) {
+          new Notice(`Failed to remove project: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      };
     }
   }
 
@@ -687,8 +727,6 @@ export abstract class TaskModal extends Modal {
       this.onAddProject?.(projectName);
     }
   }
-
-  protected onAddProject?: (projectName: string) => void;
 
   onClose() {
     this.contentEl.empty();

@@ -166,6 +166,44 @@ export class TaskEditModal extends TaskModal {
     }
   }
 
+  protected async onAddDependency(type: "blockedBy" | "blocking", taskId: string): Promise<void> {
+    const field = type;
+    const current = (this.task as any)[field] as string[] || [];
+    if (!current.includes(taskId)) {
+      const updated = [...current, taskId];
+      await this.plugin.taskService.updateTask(this.task.id, { [field]: updated });
+      (this.task as any)[field] = updated;
+    }
+    this.reloadModal();
+  }
+
+  protected async onAddSubtask(subtaskId: string): Promise<void> {
+    const current = this.task.subtasks || [];
+    if (!current.includes(subtaskId)) {
+      const updated = [...current, subtaskId];
+      await this.plugin.taskService.updateTask(this.task.id, { subtasks: updated });
+      this.task.subtasks = updated;
+    }
+    this.reloadModal();
+  }
+
+  protected async onAddProject(projectName: string): Promise<void> {
+    const current = this.task.projects || [];
+    if (!current.includes(projectName)) {
+      const updated = [...current, projectName];
+      await this.plugin.taskService.updateTask(this.task.id, { projects: updated });
+      this.task.projects = updated;
+    }
+    this.reloadModal();
+  }
+
+  /** Re-render the modal to reflect in-memory changes */
+  private async reloadModal(): Promise<void> {
+    // Remove and recreate the modal to refresh all sections
+    this.close();
+    new TaskEditModal(this.plugin, this.task, this.onUpdate).open();
+  }
+
   // ── Status/Priority/Recurrence Hooks ───────────────────────────
 
   protected getCurrentStatus(): string {
@@ -177,12 +215,10 @@ export class TaskEditModal extends TaskModal {
   }
 
   protected setRecurrence(rule: string | undefined): void {
-    // Would need to implement recurrence field - placeholder for now
     console.log("[TaskEditModal] setRecurrence:", rule);
   }
 
   protected setReminders(reminders: string): void {
-    // Would need to implement reminders field - placeholder for now
     console.log("[TaskEditModal] setReminders:", reminders);
   }
 }
