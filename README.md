@@ -70,13 +70,15 @@ projects: [#Project/Navi]
 
 ---
 
-## 安裝方式
+## 安裝方式（須使用 BRAT）
 
-### 方式一：社群插件市場（推薦）
-1. 開啟 Obsidian → 設定 → 社群插件
-2. 搜尋 **Navi Calendar**
-3. 點擊安裝
-4. 啟用插件
+### 方式一：BRAT（推薦）
+1. 安裝 **BRAT** 插件（社群插件市場搜尋 "BRAT"）
+2. 開啟 BRAT → **Add a beta plugin** → 貼入：
+   ```
+   https://github.com/Misty19940913/navi-calendar
+   ```
+3. 點 **Add Plugin**，BRAT 會自動從 GitHub Release 安裝
 
 ### 方式二：手動安裝（開發者）
 ```bash
