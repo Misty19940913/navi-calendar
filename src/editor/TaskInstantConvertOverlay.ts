@@ -64,14 +64,19 @@ export function createTaskInstantConvertOverlay(plugin: NaviCalendarPlugin) {
           // Get the line info for this match
           const lineInfo = view.state.doc.lineAt(start);
           
-          // Check if this wikilink already exists (i.e., the task was already converted)
-          const taskTitle = title.trim();
-          const taskPath = `${plugin.settings.taskFolder || "tasks/"}${taskTitle}.md`;
-          const existingFile = plugin.app.vault.getAbstractFileByPath(taskPath);
-          
           // Only show + button if task file doesn't exist yet
+          let existingFile = null;
+          try {
+            const taskTitle = title.trim();
+            const taskPath = `${plugin.settings.taskFolder || "tasks/"}${taskTitle}.md`;
+            existingFile = plugin.app.vault.getAbstractFileByPath(taskPath);
+          } catch (e) {
+            console.error("[NaviCalendar] Error checking for existing task file:", e);
+          }
+          
           if (!existingFile) {
             // Create a widget at the end of this line
+            const taskTitle = title.trim();
             const widget = new CreateTaskInlineWidget(
               plugin,
               taskTitle,
@@ -79,7 +84,7 @@ export function createTaskInstantConvertOverlay(plugin: NaviCalendarPlugin) {
               view
             );
             
-            const deco = Decoration.line({ widget });
+            const deco = Decoration.widget({ widget, side: 1 });
             builder.add(lineInfo.to, lineInfo.to, deco);
           }
         }
