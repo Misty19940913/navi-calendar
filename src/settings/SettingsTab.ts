@@ -75,10 +75,41 @@ export class SettingsTab extends PluginSettingTab {
       let updateAvailable = false;
 
       versionBtn.onclick = async () => {
-        // If update is already detected, open releases directly
+        // If update is already detected, perform in-place update
         if (updateAvailable) {
-          const repo = "Misty19940913/navi-calendar";
-          window.open(`https://github.com/${repo}/releases`, "_blank");
+          versionBtn.setAttribute("disabled", "true");
+          versionBtn.textContent = "Updating...";
+          try {
+            const remoteVersion = (this.plugin as any).manifest?.version || "0.0.0";
+            const repo = "Misty19940913/navi-calendar";
+            const baseUrl = `https://github.com/${repo}/releases/download/v${remoteVersion}`;
+
+            // Download all assets in parallel
+            const [manifestRes, mainRes, stylesRes] = await Promise.all([
+              requestUrl({ url: `${baseUrl}/manifest.json` }),
+              requestUrl({ url: `${baseUrl}/main.js` }),
+              requestUrl({ url: `${baseUrl}/styles.css` }),
+            ]);
+
+            // Get plugin directory path
+            const pluginDir = (this.plugin as any).manifest?.dir || ".obsidian/plugins/navi-calendar/";
+            const adapter = this.plugin.app.vault.adapter;
+
+            // Write files using writeBinary (ArrayBuffer from text)
+            await adapter.writeBinary(pluginDir + "manifest.json", new TextEncoder().encode(manifestRes.text).buffer);
+            await adapter.writeBinary(pluginDir + "main.js", new TextEncoder().encode(mainRes.text).buffer);
+            await adapter.writeBinary(pluginDir + "styles.css", new TextEncoder().encode(stylesRes.text).buffer);
+
+            new Notice(`✅ Plugin updated to v${remoteVersion}. Reloading...`, 4000);
+
+            // Trigger plugin reload via Obsidian's plugin manager
+            await (this.plugin.app as any).plugins.reloadPlugin((this.plugin as any).manifest?.id);
+          } catch (err) {
+            console.error("[NaviCalendar] Update failed:", err);
+            new Notice("❌ Update failed. Check internet connection and try again.", 4000);
+            versionBtn.textContent = "Update";
+            versionBtn.removeAttribute("disabled");
+          }
           return;
         }
 
