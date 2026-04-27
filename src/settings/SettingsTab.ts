@@ -1,6 +1,24 @@
-import { PluginSettingTab, Setting, Notice } from "obsidian";
+import { PluginSettingTab, Setting, Notice, requestUrl } from "obsidian";
 import NaviCalendarPlugin from "../main";
 import { NaviCalendarSettings } from "../types";
+
+interface RemoteManifest {
+  version: string;
+  minAppVersion?: string;
+}
+
+// Semantic version comparison: returns positive if a > b
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] ?? 0;
+    const nb = pb[i] ?? 0;
+    if (na > nb) return 1;
+    if (na < nb) return -1;
+  }
+  return 0;
+}
 
 export class SettingsTab extends PluginSettingTab {
   plugin: NaviCalendarPlugin;
@@ -54,8 +72,36 @@ export class SettingsTab extends PluginSettingTab {
           `
         }
       });
-      versionBtn.onclick = () => {
-        window.open("https://github.com/Misty19940913/navi-calendar/releases", "_blank");
+      versionBtn.onclick = async () => {
+        versionBtn.setAttribute("disabled", "true");
+        versionBtn.textContent = "Checking...";
+        try {
+          const repo = "Misty19940913/navi-calendar";
+          const url = `https://raw.githubusercontent.com/${repo}/main/manifest.json`;
+          const response = await requestUrl({ url });
+          const remote: RemoteManifest = response.json;
+
+          const currentVersion = (this.plugin as any).manifest?.version || "0.0.0";
+          const remoteVersion = remote.version || "0.0.0";
+          const cmp = compareVersions(remoteVersion, currentVersion);
+
+          if (cmp > 0) {
+            new Notice(`🎉 Update available: v${remoteVersion} (you have v${currentVersion})`, 5000);
+            const releaseUrl = `https://github.com/${repo}/releases`;
+            versionBtn.textContent = "Open Releases";
+            versionBtn.removeAttribute("disabled");
+            window.open(releaseUrl, "_blank");
+          } else {
+            new Notice(`✅ You're on the latest version (v${currentVersion})`, 3000);
+            versionBtn.textContent = "Check for Updates";
+            versionBtn.removeAttribute("disabled");
+          }
+        } catch (err) {
+          console.error("[NaviCalendar] Update check failed:", err);
+          new Notice("❌ Failed to check for updates. Check your internet connection.", 4000);
+          versionBtn.textContent = "Check for Updates";
+          versionBtn.removeAttribute("disabled");
+        }
       };
     });
 
