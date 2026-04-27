@@ -72,7 +72,16 @@ export class SettingsTab extends PluginSettingTab {
           `
         }
       });
+      let updateAvailable = false;
+
       versionBtn.onclick = async () => {
+        // If update is already detected, open releases directly
+        if (updateAvailable) {
+          const repo = "Misty19940913/navi-calendar";
+          window.open(`https://github.com/${repo}/releases`, "_blank");
+          return;
+        }
+
         versionBtn.setAttribute("disabled", "true");
         versionBtn.textContent = "Checking...";
         try {
@@ -86,11 +95,12 @@ export class SettingsTab extends PluginSettingTab {
           const cmp = compareVersions(remoteVersion, currentVersion);
 
           if (cmp > 0) {
+            updateAvailable = true;
             new Notice(`🎉 Update available: v${remoteVersion} (you have v${currentVersion})`, 5000);
-            const releaseUrl = `https://github.com/${repo}/releases`;
-            versionBtn.textContent = "Open Releases";
+            versionBtn.textContent = "Update";
             versionBtn.removeAttribute("disabled");
-            window.open(releaseUrl, "_blank");
+            // Also style the button to make update action obvious
+            versionBtn.style.background = "var(--text-accent)";
           } else {
             new Notice(`✅ You're on the latest version (v${currentVersion})`, 3000);
             versionBtn.textContent = "Check for Updates";
