@@ -216,13 +216,12 @@ export class TaskService {
     // Format task line
     const emojiIndicators = [];
     if (data.due) emojiIndicators.push(`📅${data.due}`);
-    if (data.scheduled) emojiIndicators.push(`⏰${data.scheduled}`);
     if (data.startTime && data.endTime) {
       emojiIndicators.push(`⏰${data.startTime}-${data.endTime}`);
     } else if (data.scheduled) {
       emojiIndicators.push(`⏰${data.scheduled}`);
     }
-    if (data.recurrence) emojiIndicators.push(`🔁 ${data.recurrence}`);
+    if (data.recurrence) emojiIndicators.push(`🔁${data.recurrence}`);
 
     const emojiStr = emojiIndicators.length > 0 ? " " + emojiIndicators.join(" ") : "";
 
@@ -233,7 +232,11 @@ export class TaskService {
     taskLine += "\n";
 
     // Append to file
-    await this.plugin.app.vault.modify(file as TFile, content + taskLine);
+    if (file && file instanceof TFile) {
+      await this.plugin.app.vault.modify(file, content + taskLine);
+    } else {
+      await this.plugin.app.vault.create(filePath, content + taskLine);
+    }
 
     // Return created task
     const tasks = await this.getAllTasks();
@@ -265,6 +268,7 @@ export class TaskService {
     due?: string;
     startTime?: string;
     endTime?: string;
+    priority?: TaskPriority;
   }): Promise<TaskInfo | null> {
     const { app, settings } = this.plugin;
     
@@ -299,7 +303,8 @@ export class TaskService {
     if (data.due) frontmatter.due = data.due;
     if (data.startTime) frontmatter.startTime = data.startTime;
     if (data.endTime) frontmatter.endTime = data.endTime;
-    
+    if (data.priority) frontmatter.priority = data.priority;
+
     // 4. Serialize frontmatter
     const fmLines = Object.entries(frontmatter)
       .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
@@ -419,7 +424,7 @@ export class TaskService {
     // Handle priority update
     if (data.priority !== undefined) {
       // Remove existing priority emojis
-      lines[lineNum - 1] = lines[lineNum - 1].replace(/\s*[🔴🟡🟢🟣❗❕]/, "");
+      lines[lineNum - 1] = lines[lineNum - 1].replace(/\s*(?:🔴|🟡|🟢|🟣|❗|❕)/g, "");
       const priorityEmoji: Record<string, string> = {
         high: " 🔴",
         medium: " 🟡",
@@ -430,6 +435,42 @@ export class TaskService {
         lines[lineNum - 1] += priorityEmoji[data.priority];
       }
     }
+
+    // ── Handle frontmatter fields ────────────────────────────────
+    // Find frontmatter boundaries (lines between opening/closing ---)
+    let fmStart = -1;
+    let fmEnd = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i]?.trim() === "---") {
+        if (fmStart === -1) fmStart = i;
+        else { fmEnd = i; break; }
+      }
+    }
+
+    // Helper: update or append a frontmatter key
+    const updateFm = (key: string, value: any) => {
+      if (fmStart === -1 || fmEnd === -1) return; // No frontmatter block
+      const pattern = new RegExp(`^(\\s*)${key}:\\s*`);
+      let found = false;
+      for (let i = fmStart + 1; i < fmEnd; i++) {
+        const m = lines[i].match(pattern);
+        if (m) {
+          lines[i] = `${m[1]}${key}: ${JSON.stringify(value)}`;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // Append before fmEnd (the closing ---)
+        lines.splice(fmEnd, 0, `  ${key}: ${JSON.stringify(value)}`);
+        fmEnd++;
+      }
+    };
+
+    if (data.blockedBy !== undefined) updateFm("blockedBy", data.blockedBy);
+    if (data.blocking !== undefined) updateFm("blocking", data.blocking);
+    if (data.subtasks !== undefined) updateFm("subtasks", data.subtasks);
+    if (data.projects !== undefined) updateFm("projects", data.projects);
 
     await this.plugin.app.vault.modify(file, lines.join("\n"));
 

@@ -26,7 +26,7 @@ export class TaskEditModal extends TaskModal {
   }
 
   protected async onSave(): Promise<void> {
-    const title = this.titleInput.getValue().trim();
+    const title = this.titleInput?.getValue().trim();
     if (!title) {
       new Notice("Please enter a task title");
       return;
@@ -39,7 +39,7 @@ export class TaskEditModal extends TaskModal {
     const endTime = this.endTimeInput?.getValue().trim() || undefined;
 
     await this.plugin.taskService.updateTask(this.task.id, {
-      title, // Note: updateTask doesn't handle title, but we pass it
+      title,
       due,
       scheduled,
       priority,
@@ -119,6 +119,11 @@ export class TaskEditModal extends TaskModal {
 
   async onOpen() {
     await super.onOpen();
+
+    // Pre-fill title input with existing task title
+    if (this.titleInput) {
+      this.titleInput.setValue(this.task.title);
+    }
 
     // Add action buttons at bottom
     this.renderActionButtons();

@@ -89,6 +89,9 @@ export interface TaskCreationData {
 export interface TaskEditData extends Partial<TaskCreationData> {
   completed?: boolean;          // Toggle completion
   delete?: boolean;              // Delete task
+  blockedBy?: string[];          // Task IDs that block this task
+  blocking?: string[];           // Task IDs that this task is blocking
+  subtasks?: string[];          // Subtask UIDs
 }
 
 // ── FullCalendar Event ───────────────────────────────────────

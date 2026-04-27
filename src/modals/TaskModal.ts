@@ -105,7 +105,7 @@ export abstract class TaskModal extends Modal {
       padding: 4px 8px;
       border-radius: 4px;
     `;
-    expandBtn.textContent = this.isExpanded ? "⬗" : "⬚";
+    expandBtn.textContent = this.isExpanded ? "⬚" : "⬗";
     expandBtn.onclick = () => this.toggleExpand();
   }
 
@@ -157,15 +157,6 @@ export abstract class TaskModal extends Modal {
       this.showProjectsMenu();
     });
 
-    // Recurrence button (🔁)
-    this.createActionButton(actionBar, "🔁", "Set recurrence", () => {
-      this.showRecurrenceMenu();
-    });
-
-    // Reminders button (🔔)
-    this.createActionButton(actionBar, "🔔", "Set reminders", () => {
-      this.showRemindersMenu();
-    });
   }
 
   private showBlockedByMenu() {
@@ -502,7 +493,23 @@ export abstract class TaskModal extends Modal {
   }
 
   private async loadSubtasks(container: HTMLElement) {
-    // Override in subclass to load actual subtasks
+    const subtasks = (this as any).task?.subtasks as string[] | undefined;
+    if (!subtasks?.length) {
+      container.createSpan({ text: "No subtasks", attr: { style: "color: var(--text-muted); font-size: 13px;" } });
+      return;
+    }
+    for (const sub of subtasks) {
+      const pill = container.createDiv("subtask-pill");
+      pill.style.cssText = "display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 12px; font-size: 12px;";
+      pill.textContent = sub;
+      const removeBtn = pill.createEl("button", { text: "❌" });
+      removeBtn.style.cssText = "background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 10px;";
+      removeBtn.onclick = () => {
+        const current = ((this as any).task.subtasks as string[]).filter((s: string) => s !== sub);
+        ((this as any).task as any).subtasks = current;
+        pill.remove();
+      };
+    }
   }
 
   private showAddSubtaskDialog() {
@@ -574,7 +581,34 @@ export abstract class TaskModal extends Modal {
   }
 
   private async loadDependencies(blockedByContainer: HTMLElement, blockingContainer: HTMLElement) {
-    // Override in subclass to load actual dependencies
+    const blockedBy = (this as any).task?.blockedBy as string[] | undefined;
+    const blocking = (this as any).task?.blocking as string[] | undefined;
+
+    if (!blockedBy?.length) {
+      blockedByContainer.createSpan({ text: "None", attr: { style: "color: var(--text-muted); font-size: 13px;" } });
+    } else {
+      for (const id of blockedBy) {
+        const pill = blockedByContainer.createDiv("blockedby-pill");
+        pill.style.cssText = "display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 12px; font-size: 12px;";
+        pill.textContent = id;
+        const removeBtn = pill.createEl("button", { text: "❌" });
+        removeBtn.style.cssText = "background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 10px;";
+        removeBtn.onclick = () => pill.remove();
+      }
+    }
+
+    if (!blocking?.length) {
+      blockingContainer.createSpan({ text: "None", attr: { style: "color: var(--text-muted); font-size: 13px;" } });
+    } else {
+      for (const id of blocking) {
+        const pill = blockingContainer.createDiv("blocking-pill");
+        pill.style.cssText = "display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 12px; font-size: 12px;";
+        pill.textContent = id;
+        const removeBtn = pill.createEl("button", { text: "❌" });
+        removeBtn.style.cssText = "background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 10px;";
+        removeBtn.onclick = () => pill.remove();
+      }
+    }
   }
 
   private showAddDependencyDialog(type: "blockedBy" | "blocking") {
@@ -632,7 +666,19 @@ export abstract class TaskModal extends Modal {
   }
 
   private async loadProjects(container: HTMLElement) {
-    // Override in subclass to load actual projects
+    const projects = (this as any).task?.projects as string[] | undefined;
+    if (!projects?.length) {
+      container.createSpan({ text: "No projects", attr: { style: "color: var(--text-muted); font-size: 13px;" } });
+      return;
+    }
+    for (const proj of projects) {
+      const pill = container.createDiv("project-pill");
+      pill.style.cssText = "display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 12px; font-size: 12px;";
+      pill.textContent = `📁 ${proj}`;
+      const removeBtn = pill.createEl("button", { text: "❌" });
+      removeBtn.style.cssText = "background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 10px;";
+      removeBtn.onclick = () => pill.remove();
+    }
   }
 
   private showAddProjectDialog() {
