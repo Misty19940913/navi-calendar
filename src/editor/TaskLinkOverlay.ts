@@ -15,6 +15,13 @@ import { TaskLinkWidget, readTaskInfoFromFile } from "./TaskLinkWidget";
 
 const refreshEffect = StateEffect.define<void>();
 
+// Module-level flag: set when refreshEffect is dispatched, cleared after rebuild.
+// This avoids the flicker caused by immediately clearing decorations.
+let pendingRefresh = false;
+
+export function markPendingRefresh() { pendingRefresh = true; }
+export function clearPendingRefresh() { pendingRefresh = false; }
+
 const taskLinkField = StateField.define<DecorationSet>({
   create() {
     return Decoration.none;
@@ -23,8 +30,11 @@ const taskLinkField = StateField.define<DecorationSet>({
     decorations = decorations.map(tr.changes);
     for (const effect of tr.effects) {
       if (effect.is(refreshEffect)) {
-        // Force rebuild by clearing and triggering update
-        return Decoration.none;
+        // Signal a pending refresh — decorations are NOT cleared here.
+        // viewPlugin.update() will rebuild synchronously on the next transaction,
+        // avoiding the 150ms debounce delay and eliminating flicker.
+        markPendingRefresh();
+        return decorations;
       }
     }
     return decorations;
@@ -50,12 +60,17 @@ export function createTaskLinkOverlay(plugin: NaviCalendarPlugin) {
       }
 
       update() {
+        // Check if a refresh is pending — if so, rebuild immediately (no debounce)
+        if (pendingRefresh) {
+          clearPendingRefresh();
+          this.decorations = this.buildDecorations();
+          return;
+        }
         // Debounce updates to avoid excessive rebuilds during typing
         if (this.debounceTimer) {
           clearTimeout(this.debounceTimer);
         }
         this.debounceTimer = setTimeout(() => {
-          // Rebuild and assign to the instance field
           this.decorations = this.buildDecorations();
         }, 150);
       }
@@ -120,5 +135,5 @@ export function createTaskLinkOverlay(plugin: NaviCalendarPlugin) {
     }
   );
 
-  return viewPlugin;
+  return [taskLinkField, viewPlugin];
 }
