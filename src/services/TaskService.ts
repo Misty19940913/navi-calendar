@@ -269,6 +269,7 @@ export class TaskService {
     startTime?: string;
     endTime?: string;
     priority?: TaskPriority;
+    tags?: string[];
   }): Promise<TaskInfo | null> {
     const { app, settings } = this.plugin;
     
@@ -287,8 +288,9 @@ export class TaskService {
           .replace(/\{\{date\}\}/g, now.split("T")[0])
           .replace(/\{\{time_created\}\}/g, now)
           .replace(/\{\{title\}\}/g, data.title);
-      } catch {
+      } catch (err) {
         // Template file not found, use default
+        console.warn(`[NaviCalendar] Task template not found or unreadable: "${settings.taskTemplatePath}"`, err);
         content = "";
       }
     }
@@ -304,10 +306,19 @@ export class TaskService {
     if (data.startTime) frontmatter.startTime = data.startTime;
     if (data.endTime) frontmatter.endTime = data.endTime;
     if (data.priority) frontmatter.priority = data.priority;
+    if (data.tags && data.tags.length > 0) frontmatter.tags = data.tags;
 
-    // 4. Serialize frontmatter
+    // 4. Serialize frontmatter (YAML style: arrays inline with # prefix, strings unquoted)
     const fmLines = Object.entries(frontmatter)
-      .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+      .map(([k, v]) => {
+        if (Array.isArray(v)) {
+          return `${k}: [${v.map((item) => `#${item}`).join(", ")}]`;
+        } else if (typeof v === "string") {
+          return `${k}: "${v}"`;
+        } else {
+          return `${k}: ${JSON.stringify(v)}`;
+        }
+      })
       .join("\n");
     
     // 5. Build file content
@@ -456,14 +467,29 @@ export class TaskService {
       for (let i = fmStart + 1; i < fmEnd; i++) {
         const m = lines[i].match(pattern);
         if (m) {
-          lines[i] = `${m[1]}${key}: ${JSON.stringify(value)}`;
+          // Format: arrays inline with # prefix, strings double-quoted, others JSON
+          if (Array.isArray(value)) {
+            lines[i] = `${m[1]}${key}: [${value.map((item) => `#${item}`).join(", ")}]`;
+          } else if (typeof value === "string") {
+            lines[i] = `${m[1]}${key}: "${value}"`;
+          } else {
+            lines[i] = `${m[1]}${key}: ${JSON.stringify(value)}`;
+          }
           found = true;
           break;
         }
       }
       if (!found) {
-        // Append before fmEnd (the closing ---)
-        lines.splice(fmEnd, 0, `  ${key}: ${JSON.stringify(value)}`);
+        // Append before fmEnd (the closing ---), YAML inline format
+        let newLine: string;
+        if (Array.isArray(value)) {
+          newLine = `  ${key}: [${value.map((item) => `#${item}`).join(", ")}]`;
+        } else if (typeof value === "string") {
+          newLine = `  ${key}: "${value}"`;
+        } else {
+          newLine = `  ${key}: ${JSON.stringify(value)}`;
+        }
+        lines.splice(fmEnd, 0, newLine);
         fmEnd++;
       }
     };
@@ -472,6 +498,8 @@ export class TaskService {
     if (data.blocking !== undefined) updateFm("blocking", data.blocking);
     if (data.subtasks !== undefined) updateFm("subtasks", data.subtasks);
     if (data.projects !== undefined) updateFm("projects", data.projects);
+    if (data.startTime !== undefined) updateFm("startTime", data.startTime);
+    if (data.endTime !== undefined) updateFm("endTime", data.endTime);
 
     await this.plugin.app.vault.modify(file, lines.join("\n"));
 

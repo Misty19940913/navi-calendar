@@ -102,8 +102,8 @@ export default class NaviCalendarPlugin extends Plugin {
     // This avoids loading TaskKanbanView (~8KB) until a task-kanban block is actually rendered
     this.ensureKanbanPostProcessor();
 
-    // Add settings tab — lazy (loaded on first settings click)
-    this.settingsTab = null;
+    // Add settings tab — eagerly register so the Settings button appears in the community plugin list
+    this.ensureSettingsTab();
 
     // ── Ribbon Icon ────────────────────────────────────────────────
     this.addRibbonIcon('calendar', 'Open Calendar', () => {
