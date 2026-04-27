@@ -25,6 +25,7 @@ import { TaskService } from "./services/TaskService";
 import { ViewStateManager } from "./services/ViewStateManager";
 import { SettingsTab } from "./settings/SettingsTab";
 import { TaskKanbanPostProcessor } from "./kanban/TaskKanbanPostProcessor";
+import { createTaskLinkOverlay } from "./editor/TaskLinkOverlay";
 
 // ── AI Command Handler Interface ───────────────────────────────
 export interface AICommandHandler {
@@ -119,6 +120,10 @@ export default class NaviCalendarPlugin extends Plugin {
 
     // Register AI command handlers
     this.registerAICommands();
+
+    // Register TaskLinkOverlay for creating tasks from wikilinks
+    const taskLinkOverlay = createTaskLinkOverlay(this);
+    this.registerEditorExtension(taskLinkOverlay);
 
     // Defer opening main calendar view until workspace is ready
     // (calling getLeaf during onload can fail with "No tab group found")
