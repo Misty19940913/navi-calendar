@@ -51,14 +51,15 @@ export default class NaviCalendarPlugin extends Plugin {
   // Event emitter replacements
   private _dataChangedEmitter: Map<string, number> = new Map();
 
-  // Status bar
+  // Settings tab — lazy loaded
+  private settingsTab: SettingsTab | null = null;
   statusBar!: HTMLElement;
 
   // Calendar leaf references
   private mainCalendarLeaf: WorkspaceLeaf | null = null;
 
-  // Kanban post-processor
-  kanbanPostProcessor!: TaskKanbanPostProcessor;
+  // Kanban post-processor — lazy (only needed when kanban block renders)
+  kanbanPostProcessor: TaskKanbanPostProcessor | null = null;
 
   // ── Lifecycle ────────────────────────────────────────────────
 
@@ -95,8 +96,12 @@ export default class NaviCalendarPlugin extends Plugin {
     // Register event handlers for data changes
     this.registerVaultEventHandlers();
 
-    // Add settings tab
-    this.addSettingTab(new SettingsTab(this));
+    // Lazy kanban post-processor — registers markdown post-processor on first vault op
+    // This avoids loading TaskKanbanView (~8KB) until a task-kanban block is actually rendered
+    this.ensureKanbanPostProcessor();
+
+    // Add settings tab — lazy (loaded on first settings click)
+    this.settingsTab = null;
 
     // ── Ribbon Icon ────────────────────────────────────────────────
     this.addRibbonIcon('calendar', 'Open Calendar', () => {
@@ -108,7 +113,7 @@ export default class NaviCalendarPlugin extends Plugin {
     this.statusBar.setText('📅 Navi Calendar');
 
     // ── Task Kanban Code Block ─────────────────────────────────────
-    this.kanbanPostProcessor = new TaskKanbanPostProcessor(this);
+    // kanbanPostProcessor is now lazy — initialized on first markdown post-process
 
     // Register AI command handlers
     this.registerAICommands();
@@ -153,6 +158,30 @@ export default class NaviCalendarPlugin extends Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
     this.triggerDataChanged();
+  }
+
+  // ── Lazy Settings Tab ─────────────────────────────────────────
+
+  // Public: open settings tab (lazy loads SettingsTab)
+  openSettingsTab(): void {
+    this.ensureSettingsTab();
+  }
+
+  private ensureSettingsTab(): SettingsTab {
+    if (!this.settingsTab) {
+      this.settingsTab = new SettingsTab(this);
+      this.addSettingTab(this.settingsTab);
+    }
+    return this.settingsTab;
+  }
+
+  // ── Lazy Kanban Post-Processor ──────────────────────────────
+
+  private ensureKanbanPostProcessor(): TaskKanbanPostProcessor {
+    if (!this.kanbanPostProcessor) {
+      this.kanbanPostProcessor = new TaskKanbanPostProcessor(this);
+    }
+    return this.kanbanPostProcessor;
   }
 
   private validateRequiredSettings() {
@@ -623,5 +652,5 @@ export default class NaviCalendarPlugin extends Plugin {
 
 // ── Helper: Open Settings Tab ────────────────────────────────
 export function openCalendarSettings(plugin: NaviCalendarPlugin) {
-  plugin.addSettingTab(new SettingsTab(plugin));
+  plugin.openSettingsTab();
 }
