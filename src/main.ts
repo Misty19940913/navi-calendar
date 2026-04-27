@@ -7,7 +7,6 @@ import {
   TFile,
   Menu,
 } from "obsidian";
-import { format } from "date-fns";
 import {
   CALENDAR_VIEW_TYPE,
   TIMELINE_VIEW_TYPE,
@@ -60,6 +59,9 @@ export default class NaviCalendarPlugin extends Plugin {
 
   // Kanban post-processor — lazy (only needed when kanban block renders)
   kanbanPostProcessor: TaskKanbanPostProcessor | null = null;
+
+  // Debounce for triggerDataChanged — prevents cache thrashing during bulk file operations
+  private _dataChangedTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ── Lifecycle ────────────────────────────────────────────────
 
@@ -372,8 +374,15 @@ export default class NaviCalendarPlugin extends Plugin {
   triggerDataChanged() {
     this._dataChangedEmitter.set("data", Date.now());
     this.app.workspace.trigger(EVENT_DATA_CHANGED);
-    // Also notify task service
-    this.taskService?.invalidateCache();
+    // Debounce: cancel previous timer, schedule new one (300ms)
+    // Prevents cache thrashing when vault operations fire multiple events in quick succession
+    if (this._dataChangedTimer) {
+      clearTimeout(this._dataChangedTimer);
+    }
+    this._dataChangedTimer = setTimeout(() => {
+      this._dataChangedTimer = null;
+      this.taskService?.invalidateCache();
+    }, 300);
   }
 
   // ── AI Command System ────────────────────────────────────────
@@ -579,26 +588,35 @@ export default class NaviCalendarPlugin extends Plugin {
   // ── Natural Date Parser ──────────────────────────────────────
   // Simple parser for common date patterns. Replace with chrono-node for production.
 
+  // Inline date formatter — replaces date-fns format() for YYYY-MM-DD
+  // Avoids loading date-fns (~30KB) for a simple string interpolation
+  private formatDate(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
   parseNaturalDate(dateStr: string): string {
     const d = dateStr.trim().toLowerCase();
 
     // today
     if (d === "today") {
-      return format(new Date(), "yyyy-MM-dd");
+      return this.formatDate(new Date());
     }
 
     // tomorrow
     if (d === "tomorrow") {
       const t = new Date();
       t.setDate(t.getDate() + 1);
-      return format(t, "yyyy-MM-dd");
+      return this.formatDate(t);
     }
 
     // next week
     if (d === "next week") {
       const t = new Date();
       t.setDate(t.getDate() + 7);
-      return format(t, "yyyy-MM-dd");
+      return this.formatDate(t);
     }
 
     // YYYY-MM-DD
@@ -628,13 +646,13 @@ export default class NaviCalendarPlugin extends Plugin {
       const t = new Date();
       if (unit.startsWith("day")) t.setDate(t.getDate() + num);
       else t.setDate(t.getDate() + num * 7);
-      return format(t, "yyyy-MM-dd");
+      return this.formatDate(t);
     }
 
     // Fallback: try Date.parse
     const parsed = Date.parse(d);
     if (!isNaN(parsed)) {
-      return format(new Date(parsed), "yyyy-MM-dd");
+      return this.formatDate(new Date(parsed));
     }
 
     // Return as-is (let TaskService handle it)
