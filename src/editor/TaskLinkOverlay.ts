@@ -99,7 +99,10 @@ export function createTaskLinkOverlay(plugin: NaviCalendarPlugin) {
           }
 
           // Try to read task info from the file
-          const taskInfo = readTaskInfoFromFile(wikilink.linkPath, plugin);
+          // Handle wikilinks without .md extension (e.g. [[tasks/買早餐]] → tasks/買早餐.md)
+          let filePath = wikilink.linkPath;
+          if (!filePath.endsWith(".md")) filePath = filePath + ".md";
+          const taskInfo = readTaskInfoFromFile(filePath, plugin);
 
           // Create widget - taskInfo is null if file doesn't exist or isn't a task
           decorations.push({

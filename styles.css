@@ -351,3 +351,39 @@
 body.task-kanban-dragging * {
   cursor: grabbing !important;
 }
+
+/* ── Task Wikilink Widget (CodeMirror inline decoration) ──── */
+.navi-calendar-tasklink-widget {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  vertical-align: middle;
+  cursor: pointer;
+  font-size: 0.9em;
+  text-decoration: none !important;
+}
+
+.navi-calendar-tasklink-widget:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--text-accent);
+}
+
+.navi-calendar-task-status-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ── Instant Convert + Button ────────────────────────────── */
+.navi-calendar-instant-convert {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: middle;
+}
