@@ -125,6 +125,11 @@ export default class NaviCalendarPlugin extends Plugin {
     const taskLinkOverlay = createTaskLinkOverlay(this);
     this.registerEditorExtension(taskLinkOverlay);
 
+    // Register InstantConvertOverlay for checkbox-to-task conversion
+    const { createTaskInstantConvertOverlay } = await import("./editor/TaskInstantConvertOverlay");
+    const instantConvertOverlay = createTaskInstantConvertOverlay(this);
+    this.registerEditorExtension(instantConvertOverlay);
+
     // Defer opening main calendar view until workspace is ready
     // (calling getLeaf during onload can fail with "No tab group found")
     this.app.workspace.onLayoutReady(() => {

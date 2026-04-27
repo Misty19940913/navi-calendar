@@ -6,13 +6,10 @@ import {
   WidgetType,
 } from "@codemirror/view";
 import { StateField, StateEffect } from "@codemirror/state";
-import {
-  Plugin,
-  TFile,
-  Notice,
-} from "obsidian";
+import { TFile } from "obsidian";
 import { TaskLinkDetectionService, WikilinkMatch } from "../services/TaskLinkDetectionService";
 import NaviCalendarPlugin from "../main";
+import { TaskLinkWidget, readTaskInfoFromFile } from "./TaskLinkWidget";
 
 // ── Effects & Fields ───────────────────────────────────────────
 
@@ -34,93 +31,6 @@ const taskLinkField = StateField.define<DecorationSet>({
   },
   provide: (f) => EditorView.decorations.from(f),
 });
-
-// ── Widget ────────────────────────────────────────────────────
-
-class CreateTaskWidget extends WidgetType {
-  private readonly wikilink: WikilinkMatch;
-  private readonly plugin: NaviCalendarPlugin;
-
-  constructor(wikilink: WikilinkMatch, plugin: NaviCalendarPlugin) {
-    super();
-    this.wikilink = wikilink;
-    this.plugin = plugin;
-  }
-
-  toDOM(): HTMLElement {
-    const span = document.createElement("span");
-    span.className = "navi-calendar-tasklink-button";
-    span.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      margin-left: 4px;
-      cursor: pointer;
-      color: var(--text-accent, #5b9cf6);
-      font-size: 0.9em;
-      vertical-align: middle;
-    `;
-    span.title = `Create task: ${this.wikilink.title}`;
-
-    const icon = document.createElement("span");
-    icon.textContent = "+";
-    icon.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: var(--text-accent, #5b9cf6);
-      color: var(--bg-primary, #1e1e1e);
-      font-weight: bold;
-      font-size: 12px;
-      line-height: 1;
-    `;
-
-    span.appendChild(icon);
-
-    span.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      await this.createTask();
-    });
-
-    return span;
-  }
-
-  private async createTask(): Promise<void> {
-    const { taskService } = this.plugin;
-    const title = this.wikilink.title;
-
-    try {
-      const task = await taskService.createTaskAsFile({ title });
-      if (task) {
-        // Open the created file
-        const file = this.plugin.app.vault.getAbstractFileByPath(task.path);
-        if (file instanceof TFile) {
-          const leaf = this.plugin.app.workspace.getLeaf(false);
-          if (leaf) {
-            await leaf.openFile(file);
-          }
-        }
-        new Notice(`✅ Task created: ${title}`, 2000);
-      }
-    } catch (err) {
-      console.error("[NaviCalendar] Failed to create task:", err);
-      new Notice(`❌ Failed to create task: ${title}`, 3000);
-    }
-  }
-
-  eq(other: CreateTaskWidget): boolean {
-    return other.wikilink.start === this.wikilink.start &&
-           other.wikilink.end === this.wikilink.end &&
-           other.wikilink.title === this.wikilink.title;
-  }
-
-  toString(): string {
-    return `CreateTaskWidget(${this.wikilink.title})`;
-  }
-}
 
 // ── Plugin ────────────────────────────────────────────────────
 
@@ -168,22 +78,41 @@ export function createTaskLinkOverlay(plugin: NaviCalendarPlugin) {
         const decorations: Array<{ from: number; to: number; value: Decoration }> = [];
 
         for (const wikilink of wikilinks) {
-          // Check if this is a missing task link
-          if (!detectionService.isMissingTaskLink(wikilink.linkPath)) {
+          // Check if this wikilink is inside the task folder
+          if (!this.isTaskLink(wikilink)) {
             continue;
           }
 
-          // Add widget after the wikilink
+          // Try to read task info from the file
+          const taskInfo = readTaskInfoFromFile(wikilink.linkPath, plugin);
+
+          // Create widget - taskInfo is null if file doesn't exist or isn't a task
           decorations.push({
-            from: wikilink.end,
+            from: wikilink.start,
             to: wikilink.end,
             value: Decoration.replace({
-              widget: new CreateTaskWidget(wikilink, plugin),
+              widget: new TaskLinkWidget(taskInfo, plugin, wikilink),
+              inclusive: true,
             }),
           });
         }
 
         return Decoration.set(decorations, true);
+      }
+
+      /**
+       * Check if a wikilink points to a task file (inside the task folder).
+       */
+      private isTaskLink(wikilink: WikilinkMatch): boolean {
+        const taskFolder = plugin.settings.taskFolder || "tasks/";
+        const normalizedLinkPath = wikilink.linkPath.endsWith("/")
+          ? wikilink.linkPath.slice(0, -1)
+          : wikilink.linkPath;
+        const normalizedTaskFolder = taskFolder.endsWith("/")
+          ? taskFolder.slice(0, -1)
+          : taskFolder;
+
+        return normalizedLinkPath.startsWith(normalizedTaskFolder);
       }
     },
     {
