@@ -150,7 +150,7 @@ export class SettingsTab extends PluginSettingTab {
           })
       );
 
-new Setting(containerEl)
+    new Setting(containerEl)
       .setName("Task template")
       .setDesc("Path to task template file")
       .addText((text) =>
@@ -159,19 +159,6 @@ new Setting(containerEl)
           .setValue(this.plugin.settings.taskTemplatePath)
           .onChange(async (value) => {
             this.plugin.settings.taskTemplatePath = value.trim();
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Task note folder")
-      .setDesc("Folder where per-task note files are stored")
-      .addText((text) =>
-        text
-          .setPlaceholder("task-notes/")
-          .setValue(this.plugin.settings.noteFolder)
-          .onChange(async (value) => {
-            this.plugin.settings.noteFolder = value.trim();
             await this.plugin.saveSettings();
           })
       );

@@ -339,20 +339,7 @@ export class TaskService {
       await app.vault.adapter.mkdir(normalizedFolder);
     } catch { /* already exists */ }
 
-    // 8. Create task note folder and index.md (TaskNotes feature)
-    const noteFolder = settings.noteFolder || "task-notes/";
-    const normalizedNoteFolder = noteFolder.endsWith("/") ? noteFolder : noteFolder + "/";
-    const noteSlug = slug;
-    const noteIndexPath = `${normalizedNoteFolder}${noteSlug}/index.md`;
-    try {
-      await app.vault.adapter.mkdir(`${normalizedNoteFolder}${noteSlug}/`);
-      const noteContent = `---\ntype: task-note\nparent: ${filePath}\nstatus: active\ntime_created: ${new Date().toISOString()}\n---\n# ${data.title}\n\n`;
-      await app.vault.adapter.write(noteIndexPath, noteContent);
-    } catch (err) {
-      console.warn(`[NaviCalendar] Could not create task note folder: "${noteIndexPath}"`, err);
-    }
-
-    // 9. Create task file
+    // 8. Create task file
     try {
       await app.vault.adapter.write(filePath, fileContent);
       
@@ -365,7 +352,6 @@ export class TaskService {
         due: data.due,
         path: filePath,
         line: 1,
-        notePath: noteIndexPath,
       };
     } catch (err) {
       console.error("[NaviCalendar] createTask error:", err);

@@ -3,7 +3,6 @@ import {
   WorkspaceLeaf,
   Notice,
   Menu,
-  TFile,
 } from "obsidian";
 import { format } from "date-fns";
 import { Calendar } from "@fullcalendar/core";
@@ -227,7 +226,7 @@ export class CalendarView extends ItemView {
       eventDurationEditable: true,
       // ── Custom rendering ────────────────────────────────────
       eventDidMount: (info: any) => {
-        const task = info.event.extendedProps?.task as any;
+        const task = info.event.extendedProps?.task;
         if (!task) return;
 
         // ── Blocked styling ──────────────────────────────────
@@ -243,51 +242,6 @@ export class CalendarView extends ItemView {
             titleEl.textContent = "🔁 " + titleEl.textContent;
           }
         }
-
-        // ── Task note button ──────────────────────────────────
-        const eventType = info.event.extendedProps?.eventType;
-        if (eventType && eventType !== "task") return;
-
-        const notePath = task.notePath;
-        if (!notePath) return;
-
-        const titleEl = info.el.querySelector(".fc-event-title");
-        if (!titleEl) return;
-
-        const noteBtn = document.createElement("span");
-        noteBtn.textContent = "📝";
-        noteBtn.title = "Open task note";
-        noteBtn.style.cssText = "margin-left: 4px; cursor: pointer; font-size: 0.85em; opacity: 0.7; vertical-align: middle;";
-        noteBtn.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          try {
-            const file = this.plugin.app.vault.getAbstractFileByPath(notePath);
-            if (file && file instanceof TFile) {
-              await this.plugin.app.workspace.getLeaf(false).openFile(file);
-            } else {
-              // File doesn't exist yet — create it on demand
-              const noteFolder = this.plugin.settings.noteFolder || "task-notes/";
-              const normalizedNoteFolder = noteFolder.endsWith("/") ? noteFolder : noteFolder + "/";
-              const slug = task.title
-                .toLowerCase()
-                .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
-                .replace(/^-+|-+$/g, "")
-                .substring(0, 50);
-              const newNotePath = `${normalizedNoteFolder}${slug}/index.md`;
-              const noteContent = `---\ntype: task-note\nparent: ${task.path}\nstatus: active\ntime_created: ${new Date().toISOString()}\n---\n# ${task.title}\n\n`;
-              await this.plugin.app.vault.adapter.write(newNotePath, noteContent);
-              await this.taskService.updateTask(task.id, { notePath: newNotePath } as any);
-              const newFile = this.plugin.app.vault.getAbstractFileByPath(newNotePath);
-              if (newFile instanceof TFile) {
-                await this.plugin.app.workspace.getLeaf(false).openFile(newFile);
-              }
-            }
-          } catch (err) {
-            console.error("[NaviCalendar] Failed to open task note:", err);
-            new Notice(`[NaviCalendar] Failed to open task note`);
-          }
-        });
-        titleEl.appendChild(noteBtn);
       },
       // ── Day cell rendering ──────────────────────────────────
       dayCellDidMount: (info: any) => {
