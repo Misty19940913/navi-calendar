@@ -1,7 +1,7 @@
 {
   "id": "navi-calendar",
   "name": "Navi Calendar",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "minAppVersion": "0.15.0",
   "description": "Life OS Calendar — Day/Week/Month/Timeline views with full task integration and AI command support",
   "author": "Navi",

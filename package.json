@@ -1,6 +1,6 @@
 {
 	"name": "navi-calendar",
-	"version": "0.1.0",
+	"version": "0.1.3",
 	"description": "Life OS Calendar Plugin — Day/Week/Month/Timeline views with full task integration",
 	"main": "main.js",
 	"type": "module",

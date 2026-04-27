@@ -1,7 +1,7 @@
 # Navi Calendar
 
 [![Obsidian Plugins](https://img.shields.io/badge/Obsidian-Plugins-7C3AED?logo=obsidian)](https://obsidian.md)
-[![版本](https://img.shields.io/badge/Version-0.1.0-7C3AED?logo=obsidian)](https://github.com/Misty19940913/navi-calendar/releases)
+[![版本](https://img.shields.io/badge/Version-0.1.3-7C3AED?logo=obsidian)](https://github.com/Misty19940913/navi-calendar/releases)
 [![MIT License](https://img.shields.io/badge/License-MIT-22C55E)](LICENSE)
 
 ---
