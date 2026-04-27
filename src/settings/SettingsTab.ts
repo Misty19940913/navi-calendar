@@ -163,6 +163,19 @@ new Setting(containerEl)
           })
       );
 
+    new Setting(containerEl)
+      .setName("Task note folder")
+      .setDesc("Folder where per-task note files are stored")
+      .addText((text) =>
+        text
+          .setPlaceholder("task-notes/")
+          .setValue(this.plugin.settings.noteFolder)
+          .onChange(async (value) => {
+            this.plugin.settings.noteFolder = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ── Task Modal Preferences ─────────────────────────────────────
     containerEl.createEl("h3", { text: "Task Modal Preferences" });
 

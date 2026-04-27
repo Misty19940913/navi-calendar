@@ -55,6 +55,9 @@ export interface TaskInfo {
   // Additional
   description?: string;          // Markdown description body
   reminder?: string[];           // Reminder timestamps
+
+  // Task note — path to the task's dedicated note file
+  notePath?: string;             // Path to the task's note file (e.g. "notes/task-slug/index.md")
 }
 
 export interface TaskDependency {
@@ -130,6 +133,7 @@ export interface NaviCalendarSettings {
   journalTemplatePath: string;         // Path to daily note template file
   taskFolder: string;          // e.g. "tasks/" — where task .md files are stored
   taskTemplatePath: string;   // Path to task template file
+  noteFolder: string;         // e.g. "task-notes/" — where per-task note folders are stored
 
   // Appearance
   defaultView: ViewState["viewType"];
@@ -171,6 +175,7 @@ export const DEFAULT_SETTINGS: Partial<NaviCalendarSettings> = {
   journalTemplatePath: "",
   taskFolder: "",
   taskTemplatePath: "",
+  noteFolder: "task-notes/",
   defaultView: "dayGridMonth",
   firstDayOfWeek: 1,
   showWeekends: true,
