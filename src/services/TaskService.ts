@@ -688,6 +688,8 @@ export class TaskService {
         const templateFile = app.vault.getAbstractFileByPath(templatePath);
         if (templateFile && templateFile instanceof TFile) {
           content = await app.vault.read(templateFile);
+        } else {
+          console.warn(`[NaviCalendar] Daily note template not found: "${templatePath}" — using fallback`);
         }
       }
 
