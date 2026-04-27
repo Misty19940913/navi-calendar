@@ -685,10 +685,12 @@ export class TaskService {
       const templatePath = settings.journalTemplatePath;
 
       if (templatePath) {
+        // Ensure .md extension for adapter.read()
+        const templatePathWithExt = templatePath.endsWith(".md") ? templatePath : `${templatePath}.md`;
         try {
-          content = await app.vault.adapter.read(templatePath);
+          content = await app.vault.adapter.read(templatePathWithExt);
         } catch (err) {
-          console.warn(`[NaviCalendar] Daily note template not found: "${templatePath}" — using fallback`, err);
+          console.warn(`[NaviCalendar] Daily note template not found: "${templatePathWithExt}" — using fallback`, err);
         }
       }
 
