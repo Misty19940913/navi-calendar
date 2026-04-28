@@ -41,7 +41,10 @@ export class TaskService {
     this.plugin.logService.info("TaskService", "Starting full vault scan", { fileCount: files.length });
     const allTasks: TaskInfo[] = [];
 
+    const taskFolder = this.plugin.settings.taskFolder;
     for (const file of files) {
+      // Skip files outside the task folder
+      if (taskFolder && !file.path.startsWith(taskFolder)) continue;
       const tasks = await this.parseTasksFromFile(file);
       allTasks.push(...tasks);
     }
@@ -380,11 +383,11 @@ export class TaskService {
     if (data.priority) frontmatter.priority = data.priority;
     if (data.tags && data.tags.length > 0) frontmatter.tags = data.tags;
 
-    // 4. Serialize frontmatter (YAML style: arrays inline with # prefix, strings unquoted)
+    // 4. Serialize frontmatter (YAML style: arrays inline, strings quoted)
     const fmLines = Object.entries(frontmatter)
       .map(([k, v]) => {
         if (Array.isArray(v)) {
-          return `${k}: [${v.map((item) => `#${item}`).join(", ")}]`;
+          return `${k}: [${v.join(", ")}]`;
         } else if (typeof v === "string") {
           return `${k}: "${v}"`;
         } else {
@@ -555,7 +558,7 @@ export class TaskService {
         if (m) {
           // Format: arrays inline with # prefix, strings double-quoted, others JSON
           if (Array.isArray(value)) {
-            lines[i] = `${m[1]}${key}: [${value.map((item) => `#${item}`).join(", ")}]`;
+            lines[i] = `${m[1]}${key}: [${value.join(", ")}]`;
           } else if (typeof value === "string") {
             lines[i] = `${m[1]}${key}: "${value}"`;
           } else {
@@ -569,7 +572,7 @@ export class TaskService {
         // Append before fmEnd (the closing ---), YAML inline format
         let newLine: string;
         if (Array.isArray(value)) {
-          newLine = `  ${key}: [${value.map((item) => `#${item}`).join(", ")}]`;
+          newLine = `  ${key}: [${value.join(", ")}]`;
         } else if (typeof value === "string") {
           newLine = `  ${key}: "${value}"`;
         } else {
@@ -617,6 +620,13 @@ export class TaskService {
 
     if (lineNum < 1 || lineNum > lines.length) {
       throw new Error(`Line ${lineNum} out of range`);
+    }
+
+    // Validate this is actually a task line before deleting
+    const lineContent = lines[lineNum - 1];
+    const taskMatch = lineContent.match(/^(\s*)[-*]\s*\[([ xX\-<>!])\]\s*/);
+    if (!taskMatch) {
+      throw new Error(`Line ${lineNum} does not appear to be a task: ${lineContent}`);
     }
 
     // Remove the task line

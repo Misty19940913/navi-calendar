@@ -212,6 +212,10 @@ class CreateTaskInlineWidget extends WidgetType {
     return other.lineEnd === this.lineEnd && other.taskTitle === this.taskTitle;
   }
 
+  ignoreEvent(event: Event): boolean {
+    return event.type === "mousedown" || event.type === "click";
+  }
+
   // Widget must not hold EditorView reference — dispatch is handled by ViewPlugin
   get estimatedHeight(): number { return -1; }
   get block(): boolean { return false; }

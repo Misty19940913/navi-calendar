@@ -1,24 +1,6 @@
-import { PluginSettingTab, Setting, Notice, requestUrl } from "obsidian";
+import { PluginSettingTab, Setting, Notice } from "obsidian";
 import NaviCalendarPlugin from "../main";
 import { NaviCalendarSettings } from "../types";
-
-interface RemoteManifest {
-  version: string;
-  minAppVersion?: string;
-}
-
-// Semantic version comparison: returns positive if a > b
-function compareVersions(a: string, b: string): number {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const na = pa[i] ?? 0;
-    const nb = pb[i] ?? 0;
-    if (na > nb) return 1;
-    if (na < nb) return -1;
-  }
-  return 0;
-}
 
 export class SettingsTab extends PluginSettingTab {
   plugin: NaviCalendarPlugin;
@@ -57,93 +39,17 @@ export class SettingsTab extends PluginSettingTab {
         });
       });
 
-      // Right: Check updates button
-      const versionBtn = el.createEl("button", {
-        text: "Check for Updates",
+      // Right: Version display only (self-update disabled for security)
+      el.createDiv({
         attr: {
           style: `
-            background: var(--interactive-accent);
-            color: var(--text-on-accent);
-            border: none;
-            border-radius: 6px;
-            padding: 6px 14px;
+            color: var(--text-muted);
             font-size: 13px;
-            cursor: pointer;
+            padding: 6px 14px;
           `
-        }
+        },
+        text: `v${(this.plugin as any).manifest?.version || "0.1.0"}`
       });
-      let updateAvailable = false;
-
-      versionBtn.onclick = async () => {
-        // If update is already detected, perform in-place update
-        if (updateAvailable) {
-          versionBtn.setAttribute("disabled", "true");
-          versionBtn.textContent = "Updating...";
-          try {
-            const remoteVersion = (this.plugin as any).manifest?.version || "0.0.0";
-            const repo = "Misty19940913/navi-calendar";
-            const baseUrl = `https://github.com/${repo}/releases/download/v${remoteVersion}`;
-
-            // Download all assets in parallel
-            const [manifestRes, mainRes, stylesRes] = await Promise.all([
-              requestUrl({ url: `${baseUrl}/manifest.json` }),
-              requestUrl({ url: `${baseUrl}/main.js` }),
-              requestUrl({ url: `${baseUrl}/styles.css` }),
-            ]);
-
-            // Get plugin directory path
-            const pluginDir = (this.plugin as any).manifest?.dir || ".obsidian/plugins/navi-calendar/";
-            const adapter = this.plugin.app.vault.adapter;
-
-            // Write files using writeBinary (ArrayBuffer from text)
-            await adapter.writeBinary(pluginDir + "manifest.json", new TextEncoder().encode(manifestRes.text).buffer);
-            await adapter.writeBinary(pluginDir + "main.js", new TextEncoder().encode(mainRes.text).buffer);
-            await adapter.writeBinary(pluginDir + "styles.css", new TextEncoder().encode(stylesRes.text).buffer);
-
-            new Notice(`✅ Plugin updated to v${remoteVersion}. Reloading...`, 4000);
-
-            // Trigger plugin reload via Obsidian's plugin manager
-            await (this.plugin.app as any).plugins.reloadPlugin((this.plugin as any).manifest?.id);
-          } catch (err) {
-            console.error("[NaviCalendar] Update failed:", err);
-            new Notice("❌ Update failed. Check internet connection and try again.", 4000);
-            versionBtn.textContent = "Update";
-            versionBtn.removeAttribute("disabled");
-          }
-          return;
-        }
-
-        versionBtn.setAttribute("disabled", "true");
-        versionBtn.textContent = "Checking...";
-        try {
-          const repo = "Misty19940913/navi-calendar";
-          const url = `https://raw.githubusercontent.com/${repo}/main/manifest.json`;
-          const response = await requestUrl({ url });
-          const remote: RemoteManifest = response.json;
-
-          const currentVersion = (this.plugin as any).manifest?.version || "0.0.0";
-          const remoteVersion = remote.version || "0.0.0";
-          const cmp = compareVersions(remoteVersion, currentVersion);
-
-          if (cmp > 0) {
-            updateAvailable = true;
-            new Notice(`🎉 Update available: v${remoteVersion} (you have v${currentVersion})`, 5000);
-            versionBtn.textContent = "Update";
-            versionBtn.removeAttribute("disabled");
-            // Also style the button to make update action obvious
-            versionBtn.style.background = "var(--text-accent)";
-          } else {
-            new Notice(`✅ You're on the latest version (v${currentVersion})`, 3000);
-            versionBtn.textContent = "Check for Updates";
-            versionBtn.removeAttribute("disabled");
-          }
-        } catch (err) {
-          console.error("[NaviCalendar] Update check failed:", err);
-          new Notice("❌ Failed to check for updates. Check your internet connection.", 4000);
-          versionBtn.textContent = "Check for Updates";
-          versionBtn.removeAttribute("disabled");
-        }
-      };
     });
 
     // ── Required: Journal Folder ──────────────────────────────

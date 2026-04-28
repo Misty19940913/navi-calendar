@@ -284,8 +284,12 @@ export default class NaviCalendarPlugin extends Plugin {
   }
 
   private isRelevantFile(file: TFile): boolean {
-    if (!this.settings.journalFolder) return true;
-    return file.path.startsWith(this.settings.journalFolder);
+    const journal = this.settings.journalFolder;
+    const task = this.settings.taskFolder;
+    if (!journal && !task) return true;
+    const inJournal = !!(journal && file.path.startsWith(journal));
+    const inTask = !!(task && file.path.startsWith(task));
+    return inJournal || inTask;
   }
 
   // ── View Activation ──────────────────────────────────────────

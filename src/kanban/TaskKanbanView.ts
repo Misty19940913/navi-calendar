@@ -11,10 +11,10 @@ interface KanbanColumn {
 }
 
 const COLUMNS: KanbanColumn[] = [
-  { id: "todo", label: "📋 To Do", statuses: [" ", ""], color: "#6b7280" },
-  { id: "in-progress", label: "🔄 In Progress", statuses: [">"], color: "#3b82f6" },
-  { id: "done", label: "✅ Done", statuses: ["x", "X"], color: "#22c55e" },
-  { id: "cancelled", label: "➖ Cancelled", statuses: ["-"], color: "#ef4444" },
+  { id: "todo", label: "To Do", statuses: [" ", ""], color: "#6b7280" },
+  { id: "in-progress", label: "In Progress", statuses: [">"], color: "#3b82f6" },
+  { id: "done", label: "Done", statuses: ["x", "X"], color: "#22c55e" },
+  { id: "cancelled", label: "Cancelled", statuses: ["-"], color: "#ef4444" },
 ];
 
 const STATUS_CHAR: Record<string, string> = {
@@ -150,7 +150,8 @@ export class TaskKanbanView {
 
     const char = STATUS_CHAR[newColId] ?? " ";
     try {
-      await taskService.updateTask(taskId, { status: char } as any);
+      // Clear blockedBy when moving to a new column (completion/unblocking)
+      await taskService.updateTask(taskId, { status: char, blockedBy: [] } as any);
       await this.loadAndRender();
     } catch (err) {
       console.error("[TaskKanban] moveTask error:", err);

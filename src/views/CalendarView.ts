@@ -52,6 +52,7 @@ export class CalendarView extends ItemView {
 
   override async onOpen() {
     console.log("[navi-calendar] CalendarView onOpen called");
+    this._isFirstRender = true;
     await this.initCalendar();
   }
 
@@ -488,7 +489,7 @@ export class CalendarView extends ItemView {
 
     this._dataUpdateTimer = setTimeout(() => {
       this.refresh();
-    }, 5000);
+    }, 300);
   }
 
   // ── Cleanup ─────────────────────────────────────────────────
