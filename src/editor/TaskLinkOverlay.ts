@@ -72,7 +72,7 @@ export function createTaskLinkOverlay(plugin: NaviCalendarPlugin) {
         }
         this.debounceTimer = setTimeout(() => {
           this.decorations = this.buildDecorations();
-        }, 150);
+        }, plugin.settings.editorDebounce ?? 150);
       }
 
       destroy() {

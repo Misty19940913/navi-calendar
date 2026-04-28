@@ -253,7 +253,7 @@ export class TaskKanbanPostProcessor {
   }
 
   unload() {
-    for (const [blockId, view] of this.instances) {
+    for (const [blockId, view] of Array.from(this.instances.entries())) {
       view.destroy();
     }
     this.instances.clear();

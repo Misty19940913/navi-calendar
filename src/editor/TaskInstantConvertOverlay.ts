@@ -31,7 +31,15 @@ export function createTaskInstantConvertOverlay(plugin: NaviCalendarPlugin) {
 
       constructor(readonly view: EditorView) {
         this.decorations = this.buildDecorations();
+        // Listen for create-task events from widgets
+        this.view.scrollDOM.addEventListener("navi-calendar:create-task", this.handleCreateTask as EventListener);
       }
+
+      handleCreateTask = async (e: Event) => {
+        const ce = e as CustomEvent<{ taskTitle: string; lineEnd: number }>;
+        const { taskTitle, lineEnd } = ce.detail;
+        await this.createTask(taskTitle, lineEnd);
+      };
 
       update() {
         if (this.debounceTimer) {
@@ -39,57 +47,91 @@ export function createTaskInstantConvertOverlay(plugin: NaviCalendarPlugin) {
         }
         this.debounceTimer = setTimeout(() => {
           this.decorations = this.buildDecorations();
-        }, 200);
+        }, plugin.settings.editorDebounce ?? 150);
       }
 
       destroy() {
-        if (this.debounceTimer) {
-          clearTimeout(this.debounceTimer);
-        }
+        if (this.debounceTimer) clearTimeout(this.debounceTimer);
+        this.view.scrollDOM.removeEventListener("navi-calendar:create-task", this.handleCreateTask as EventListener);
       }
 
-      private buildDecorations(): DecorationSet {
-        const view = this.view;
-        const docText = view.state.doc.toString();
-        
+      buildDecorations() {
         const builder = new RangeSetBuilder<Decoration>();
-        
-        CHECKBOX_LINE_REGEX.lastIndex = 0;
+        const docText = this.view.state.doc.toString();
         let match: RegExpExecArray | null;
-        
+
+        CHECKBOX_LINE_REGEX.lastIndex = 0;
         while ((match = CHECKBOX_LINE_REGEX.exec(docText)) !== null) {
           const [fullMatch, checkboxPart, title] = match;
           const start = match.index;
-          
-          // Get the line info for this match
-          const lineInfo = view.state.doc.lineAt(start);
-          
+          const lineInfo = this.view.state.doc.lineAt(start);
+
           // Only show + button if task file doesn't exist yet
           let existingFile = null;
           try {
-            const taskTitle = title.trim();
-            const taskPath = `${plugin.settings.taskFolder || "tasks/"}${taskTitle}.md`;
+            const taskPath = `${plugin.settings.taskFolder || "tasks/"}${title.trim()}.md`;
             existingFile = plugin.app.vault.getAbstractFileByPath(taskPath);
           } catch (e) {
             console.error("[NaviCalendar] Error checking for existing task file:", e);
           }
-          
+
           if (!existingFile) {
-            // Create a widget at the end of this line
             const taskTitle = title.trim();
             const widget = new CreateTaskInlineWidget(
               plugin,
               taskTitle,
               lineInfo.to,
-              view
             );
-            
+
             const deco = Decoration.widget({ widget, side: 1 });
             builder.add(lineInfo.to, lineInfo.to, deco);
           }
         }
-        
+
         return builder.finish();
+      }
+
+      private async createTask(taskTitle: string, lineEnd: number): Promise<void> {
+        try {
+          const taskService = plugin.taskService;
+
+          // Create the task file
+          const task = await taskService.createTaskAsFile({ title: taskTitle });
+
+          if (!task) {
+            console.error("[NaviCalendar] createTaskAsFile returned null");
+            return;
+          }
+
+          // Get the editor and current file
+          const currentFile = plugin.app.workspace.getActiveFile();
+          if (!currentFile) return;
+
+          // Get the current line text
+          const lineInfo = this.view.state.doc.lineAt(lineEnd);
+
+          // Generate the wikilink using Obsidian's method (respects user's link format)
+          const taskFile = plugin.app.vault.getAbstractFileByPath(task.path);
+          if (!taskFile || !(taskFile instanceof TFile)) return;
+
+          const wikilink = plugin.app.fileManager.generateMarkdownLink(
+            taskFile,
+            currentFile.path,
+            "",
+            taskTitle
+          );
+
+          // Replace the entire line with the wikilink
+          const lineStart = lineInfo.from;
+
+          this.view.dispatch({
+            changes: { from: lineStart, to: lineInfo.to, insert: wikilink },
+          });
+
+          // The wikilink will now be picked up by TaskLinkOverlay and rendered as a card
+        } catch (err) {
+          console.error("[NaviCalendar] Failed to create task from checkbox:", err);
+        }
       }
     },
     {
@@ -102,14 +144,14 @@ export function createTaskInstantConvertOverlay(plugin: NaviCalendarPlugin) {
 
 /**
  * Widget that shows a "+" create button at the end of a checkbox line.
- * Clicking it creates the task file and replaces the checkbox with a wikilink.
+ * Clicking it fires a custom event — ViewPlugin catches it and handles dispatch.
+ * Widget must NOT hold EditorView reference to avoid memory leaks.
  */
 class CreateTaskInlineWidget extends WidgetType {
   constructor(
     private plugin: NaviCalendarPlugin,
     private taskTitle: string,
     private lineEnd: number,
-    private view: EditorView
   ) {
     super();
   }
@@ -142,75 +184,35 @@ class CreateTaskInlineWidget extends WidgetType {
       transition: opacity 0.15s;
     `;
     btn.title = `Create task: ${this.taskTitle}`;
-    
+
     btn.addEventListener("mouseenter", () => {
       btn.style.opacity = "1";
     });
     btn.addEventListener("mouseleave", () => {
       btn.style.opacity = "0.7";
     });
+    // Fire a custom event — ViewPlugin catches it and handles dispatch in the EditorView context
     btn.addEventListener("click", async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      await this.createTask();
+      wrapper.dispatchEvent(
+        new CustomEvent("navi-calendar:create-task", {
+          bubbles: true,
+          detail: { taskTitle: this.taskTitle, lineEnd: this.lineEnd },
+        })
+      );
     });
 
     wrapper.appendChild(btn);
     return wrapper;
   }
 
-  private async createTask(): Promise<void> {
-    try {
-      const taskService = this.plugin.taskService;
-      
-      // Create the task file
-      const task = await taskService.createTaskAsFile({ title: this.taskTitle });
-      
-      if (!task) {
-        console.error("[NaviCalendar] createTaskAsFile returned null");
-        return;
-      }
-      
-      // Get the editor and current file
-      const editor = this.view;
-      const currentFile = this.plugin.app.workspace.getActiveFile();
-      if (!currentFile) return;
-
-      // Get the current line text
-      const lineInfo = editor.state.doc.lineAt(this.lineEnd);
-      
-      // Generate the wikilink using Obsidian's method (respects user's link format)
-      const taskFile = this.plugin.app.vault.getAbstractFileByPath(task.path);
-      if (!taskFile || !(taskFile instanceof TFile)) return;
-      
-      const wikilink = this.plugin.app.fileManager.generateMarkdownLink(
-        taskFile,
-        currentFile.path,
-        "",
-        this.taskTitle
-      );
-      
-      // Replace the entire line with the wikilink
-      const lineStart = lineInfo.from;
-      
-      editor.dispatch({
-        changes: { from: lineStart, to: lineInfo.to, insert: wikilink },
-      });
-      
-      // The wikilink will now be picked up by TaskLinkOverlay and rendered as a card
-    } catch (err) {
-      console.error("[NaviCalendar] Failed to create task from checkbox:", err);
-    }
-  }
-
   eq(other: WidgetType): boolean {
     if (!(other instanceof CreateTaskInlineWidget)) return false;
-    return (
-      other.lineEnd === this.lineEnd &&
-      other.taskTitle === this.taskTitle
-    );
+    return other.lineEnd === this.lineEnd && other.taskTitle === this.taskTitle;
   }
 
+  // Widget must not hold EditorView reference — dispatch is handled by ViewPlugin
   get estimatedHeight(): number { return -1; }
   get block(): boolean { return false; }
 }

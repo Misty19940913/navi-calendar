@@ -23,6 +23,7 @@ import { TimelineView } from "./views/TimelineView";
 import { MiniCalendarView } from "./views/MiniCalendarView";
 import { TaskService } from "./services/TaskService";
 import { ViewStateManager } from "./services/ViewStateManager";
+import { LogService } from "./services/LogService";
 import { SettingsTab } from "./settings/SettingsTab";
 import { TaskKanbanPostProcessor } from "./kanban/TaskKanbanPostProcessor";
 import { createTaskLinkOverlay } from "./editor/TaskLinkOverlay";
@@ -46,6 +47,7 @@ export default class NaviCalendarPlugin extends Plugin {
   // Services
   taskService!: TaskService;
   viewStateManager!: ViewStateManager;
+  logService!: LogService;
   aiCommandHandlers: AICommandHandler[] = [];
 
   // Event emitter replacements
@@ -75,6 +77,8 @@ export default class NaviCalendarPlugin extends Plugin {
     // Initialize services
     this.taskService = new TaskService(this);
     this.viewStateManager = new ViewStateManager(this);
+    this.logService = new LogService(this);
+    await this.logService.onLoad();
 
     // Register views
     // Register views — all factories receive only (leaf), plugin accessed via this.app.plugins
@@ -155,6 +159,8 @@ export default class NaviCalendarPlugin extends Plugin {
     });
     // Cleanup kanban post-processor
     this.kanbanPostProcessor?.unload();
+    // Flush and shutdown log service
+    this.logService?.onUnload();
   }
 
   // ── Settings ─────────────────────────────────────────────────

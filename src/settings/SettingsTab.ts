@@ -409,5 +409,77 @@ export class SettingsTab extends PluginSettingTab {
         },
       });
     }
+
+    // ── Log Subsystem ───────────────────────────────────────────
+    containerEl.createEl("h3", { text: "📋 Log Subsystem" });
+
+    // Master switch
+    new Setting(containerEl)
+      .setName("Enable logging")
+      .setDesc("Record plugin activity to .navi-calendar-logs/ (vault root)")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.logEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.logEnabled = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // Log level
+    new Setting(containerEl)
+      .setName("Log level")
+      .setDesc("Minimum severity to record (error → debug = most verbose)")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("debug", "debug — all messages")
+          .addOption("info", "info — info, warn, error")
+          .addOption("warn", "warn — warn and error only")
+          .addOption("error", "error — errors only")
+          .setValue(this.plugin.settings.logLevel)
+          .onChange(async (value) => {
+            this.plugin.settings.logLevel = value as "debug" | "info" | "warn" | "error";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // In-memory buffer size (read-only info)
+    containerEl.createEl("p", {
+      text: `Ring buffer: 500 entries | Flush threshold: 30 entries | Log folder: .navi-calendar-logs/`,
+      attr: { style: "color: var(--text-muted); font-size: 0.85em; margin-top: 4px;" },
+    });
+
+    // Open today's log file
+    new Setting(containerEl)
+      .setName("Open today's log file")
+      .setDesc("Opens .navi-calendar-logs/YYYY-MM-DD.md in a new pane")
+      .addButton((button) =>
+        button.setButtonText("Open Log").onClick(async () => {
+          try {
+            await this.plugin.logService.openTodayLog();
+          } catch (err) {
+            new Notice(`Failed to open log: ${err}`, 3000);
+          }
+        })
+      );
+
+    // View recent log entries (last 20 from memory)
+    new Setting(containerEl)
+      .setName("Preview recent logs (in-memory)")
+      .setDesc("Shows last 20 entries from the ring buffer (session-only)")
+      .addButton((button) =>
+        button.setButtonText("Show Preview").onClick(async () => {
+          const entries = this.plugin.logService.getEntries().slice(-20);
+          if (entries.length === 0) {
+            new Notice("No log entries yet this session", 2000);
+            return;
+          }
+          const lines = entries.map(
+            (e) =>
+              `[${e.level.padEnd(5)}] ${e.source}: ${e.message}`
+          );
+          new Notice(lines.join("\n"), 5000);
+        })
+      );
   }
 }

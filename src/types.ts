@@ -17,6 +17,9 @@ export const EVENT_TASK_DELETED = "navi-calendar:task-deleted";
 // ── Task Priority ─────────────────────────────────────────────
 export type TaskPriority = "none" | "low" | "medium" | "high" | "urgent";
 
+/** Log severity levels — lower = more verbose */
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
 // ── Task Status ───────────────────────────────────────────────
 export interface TaskStatus {
   symbol: string;      // e.g. " ", "x", "!"
@@ -25,7 +28,7 @@ export interface TaskStatus {
 
 // ── Core Task Model ──────────────────────────────────────────
 export interface TaskInfo {
-  id: string;                    // Unique identifier (path + line number)
+  id: string;                    // OS-spec format: {type}/{slug}:{line} (e.g. "task/buy-breakfast:0", "task/weekly-review:3")
   title: string;                 // Task title
   status: string;                 // Status symbol or custom key
   priority: TaskPriority;
@@ -51,7 +54,10 @@ export interface TaskInfo {
   blockedBy?: string[];          // Task IDs that block this task
   blocking?: string[];           // Task IDs that this task is blocking
   isBlocking?: boolean;          // Computed: whether this task is currently blocking others
-  
+
+  // Life OS — Area from frontmatter
+  area?: string;                 // From frontmatter.area — associated Area (e.g. "職業發展")
+
   // Additional
   description?: string;          // Markdown description body
   reminder?: string[];           // Reminder timestamps
@@ -165,6 +171,14 @@ export interface NaviCalendarSettings {
   // Task Modal
   enableModalSplitLayout: boolean;
   defaultExpanded: boolean;
+
+  // Editor overlay debounce (ms) — unified across TaskLinkOverlay and TaskInstantConvertOverlay
+  editorDebounce: number;
+
+  // Log subsystem
+  logLevel: LogLevel;       // Minimum level to record ("debug" | "info" | "warn" | "error")
+  logEnabled: boolean;      // Master switch for logging
+  logFolder: string;        // Vault folder for log files (default: ".navi-calendar-logs")
 }
 
 export const DEFAULT_SETTINGS: Partial<NaviCalendarSettings> = {
@@ -191,6 +205,10 @@ export const DEFAULT_SETTINGS: Partial<NaviCalendarSettings> = {
   openDirection: "replace",
   miniCalendarEnabled: true,
   miniCalendarSidebar: "left",
+  editorDebounce: 150,
+  logLevel: "info",
+  logEnabled: true,
+  logFolder: ".navi-calendar-logs",
   statusConfig: {
     " ": { symbol: " ", label: "Todo" },
     "x": { symbol: "x", label: "Done" },

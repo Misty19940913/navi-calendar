@@ -1,5 +1,6 @@
 import { TFile, App, Vault, CachedMetadata, WorkspaceLeaf } from "obsidian";
 import { format, parseISO, isToday, isBefore, addDays } from "date-fns";
+import { slugify } from "../utils/linkUtils";
 import {
   TaskInfo,
   TaskCreationData,
@@ -32,10 +33,12 @@ export class TaskService {
     const cacheKey = "all";
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+      this.plugin.logService.debug("TaskService", "Cache hit, returning cached tasks", { cacheKey, count: cached.tasks.length });
       return cached.tasks;
     }
 
     const files = this.plugin.app.vault.getMarkdownFiles();
+    this.plugin.logService.info("TaskService", "Starting full vault scan", { fileCount: files.length });
     const allTasks: TaskInfo[] = [];
 
     for (const file of files) {
@@ -44,6 +47,7 @@ export class TaskService {
     }
 
     this.cache.set(cacheKey, { tasks: allTasks, timestamp: Date.now() });
+    this.plugin.logService.info("TaskService", "Full vault scan complete", { totalTasks: allTasks.length });
     return allTasks;
   }
 
@@ -89,8 +93,54 @@ export class TaskService {
           if (task) tasks.push(task);
         }
       }
+
+      // GAP 4: Parse frontmatter-level metadata task (line=0) for parent/children
+      if (frontmatter?.parent || frontmatter?.children) {
+        const parentVal = frontmatter.parent;
+        const childrenVal = frontmatter.children;
+        const parentArr: string[] = parentVal
+          ? Array.isArray(parentVal) ? parentVal : [parentVal]
+          : [];
+        const childrenArr: string[] = childrenVal
+          ? Array.isArray(childrenVal) ? childrenVal : [childrenVal]
+          : [];
+
+        const alreadyHasLine0 = tasks.some((t) => t.line === 0 && t.path === file.path);
+        if (!alreadyHasLine0) {
+          // Use OS spec ID format: {type}/{slug}:{line}
+          const frontmatterTitle = frontmatter.title || file.basename;
+          const frontmatterSlug = frontmatterTitle
+            .toLowerCase()
+            .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .substring(0, 50);
+          const folderSegs = file.path.split("/");
+          const folder = folderSegs.length > 1 ? folderSegs[folderSegs.length - 2] : "";
+          const folderToType: Record<string, string> = {
+            "tasks": "task",
+            "projects": "project",
+            "goals": "goal",
+          };
+          const fmType = folderToType[folder] || "task";
+
+          tasks.push({
+            id: `${fmType}/${frontmatterSlug}:0`,
+            title: frontmatterTitle,
+            status: frontmatter.status || "todo",
+            priority: "none",
+            path: file.path,
+            line: 0,
+            tags: [],
+            projects: [],
+            subtasks: childrenArr,
+            blockedBy: [],
+            blocking: [],
+            area: frontmatter.area ? String(frontmatter.area) : undefined,
+          });
+        }
+      }
     } catch (e) {
-      // File read error, skip
+      this.plugin.logService.error("TaskService", "Failed to parse file", { path: file.path, error: String(e) });
     }
 
     return tasks;
@@ -118,8 +168,15 @@ export class TaskService {
     let recurrence: string | undefined;
     let priority: "none" | "low" | "medium" | "high" | "urgent" = "none";
     let blockedBy: string[] = [];
+
+    // Parse blockedBy: 🔒[[task-id]] syntax
+    const blockedByMatch = raw.match(/🔒\[\[([^\]]+)\]\]/);
+    if (blockedByMatch) {
+      blockedBy = blockedByMatch[1].split(",").map((s) => s.trim()).filter(Boolean);
+    }
     let tags: string[] = [];
     let projects: string[] = [];
+    let area: string | undefined;
 
     // Extract inline tags
     const tagMatches = raw.match(/#[\w-]+/g);
@@ -169,9 +226,24 @@ export class TaskService {
       if (frontmatter.tags && tags.length === 0) {
         tags = Array.isArray(frontmatter.tags) ? frontmatter.tags : [frontmatter.tags];
       }
+      if (frontmatter.area) {
+        area = String(frontmatter.area);
+      }
     }
 
-    const id = `${path}:${line}`;
+    // Construct OS-spec ID: {type}/{slug}:{line}
+    // Derive type from folder path (tasks/ → task, projects/ → project, goals/ → goal)
+    const segments = path.split("/");
+    const folder = segments.length > 1 ? segments[segments.length - 2] : "";
+    const folderToType: Record<string, string> = {
+      "tasks": "task",
+      "projects": "project",
+      "goals": "goal",
+    };
+    const type = folderToType[folder] || "task";
+    // For inline tasks (line > 0), include line in ID; for frontmatter-level (line=0) handled elsewhere
+    const slug = slugify(title);
+    const id = `${type}/${slug}:${line}`;
 
     return {
       id,
@@ -188,6 +260,7 @@ export class TaskService {
       blockedBy,
       tags,
       projects,
+      area,
     };
   }
 
@@ -289,8 +362,7 @@ export class TaskService {
           .replace(/\{\{time_created\}\}/g, now)
           .replace(/\{\{title\}\}/g, data.title);
       } catch (err) {
-        // Template file not found, use default
-        console.warn(`[NaviCalendar] Task template not found or unreadable: "${settings.taskTemplatePath}"`, err);
+        this.plugin.logService.warn("TaskService", "Task template file not found, using default", { templatePath: settings.taskTemplatePath, error: String(err) });
         content = "";
       }
     }
@@ -298,7 +370,7 @@ export class TaskService {
     // 3. Build frontmatter
     const frontmatter: Record<string, any> = {
       type: "task",
-      status: " ",
+      status: "todo",
       time_created: new Date().toISOString(),
     };
     if (data.scheduled) frontmatter.scheduled = data.scheduled;
@@ -325,28 +397,39 @@ export class TaskService {
     const body = content.trim() ? `\n\n${content.trim()}` : "";
     const fileContent = `---\n${fmLines}\n---\n# ${data.title}${body}`;
     
-    // 6. Generate filename
+    // 6. Generate filename — no timestamp so wikilinks resolve correctly
     const slug = data.title
       .toLowerCase()
       .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .substring(0, 50);
-    const filename = `${slug}-${Date.now()}.md`;
-    const filePath = `${normalizedFolder}${filename}`;
+    let filename = `${slug}.md`;
+    let filePath = `${normalizedFolder}${filename}`;
+    // Handle name collision
+    let counter = 1;
+    while (this.plugin.app.vault.getAbstractFileByPath(filePath)) {
+      filename = `${slug}-${counter}.md`;
+      filePath = `${normalizedFolder}${filename}`;
+      counter++;
+    }
     
     // 7. Ensure task folder exists
     try {
       await app.vault.adapter.mkdir(normalizedFolder);
-    } catch { /* already exists */ }
+    } catch (err) {
+      this.plugin.logService.warn("TaskService", "mkdir task folder failed (may already exist)", { folder: normalizedFolder, error: String(err) });
+    }
 
     // 8. Create task file
     try {
       await app.vault.adapter.write(filePath, fileContent);
       
+      // Construct OS-spec ID: {type}/{slug}:{line}
+      const id = `task/${slug}:0`;
       return {
-        id: `${filePath}:0`,
+        id,
         title: data.title,
-        status: " ",
+        status: "todo",
         priority: data.priority || "none" as TaskPriority,
         scheduled: data.scheduled,
         due: data.due,
@@ -354,7 +437,7 @@ export class TaskService {
         line: 1,
       };
     } catch (err) {
-      console.error("[NaviCalendar] createTask error:", err);
+      this.plugin.logService.error("TaskService", "createTask failed", { title: data.title, error: String(err) });
       return null;
     }
   }
@@ -363,10 +446,13 @@ export class TaskService {
     id: string,
     data: TaskEditData
   ): Promise<TaskInfo> {
-    // Parse id: "path:line"
+    // Parse id: "type/slug:line" (OS spec format)
     const colonIdx = id.lastIndexOf(":");
-    const filePath = id.substring(0, colonIdx);
+    let filePath = id.substring(0, colonIdx);
     const lineNum = parseInt(id.substring(colonIdx + 1));
+
+    // Normalize: append .md for file system access
+    if (!filePath.endsWith(".md")) filePath = filePath + ".md";
 
     const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
     if (!file || !(file instanceof TFile)) {
@@ -513,9 +599,13 @@ export class TaskService {
   }
 
   async deleteTask(id: string): Promise<void> {
+    // Parse id: "type/slug:line" (OS spec format)
     const colonIdx = id.lastIndexOf(":");
-    const filePath = id.substring(0, colonIdx);
+    let filePath = id.substring(0, colonIdx);
     const lineNum = parseInt(id.substring(colonIdx + 1));
+
+    // Normalize: append .md for file system access
+    if (!filePath.endsWith(".md")) filePath = filePath + ".md";
 
     const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
     if (!file || !(file instanceof TFile)) {
@@ -690,7 +780,7 @@ export class TaskService {
         try {
           content = await app.vault.adapter.read(templatePathWithExt);
         } catch (err) {
-          console.warn(`[NaviCalendar] Daily note template not found: "${templatePathWithExt}" — using fallback`, err);
+          this.plugin.logService.warn("TaskService", "Daily note template not found, using fallback", { templatePath: templatePathWithExt, error: String(err) });
         }
       }
 

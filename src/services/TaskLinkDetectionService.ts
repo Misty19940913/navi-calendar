@@ -51,10 +51,14 @@ export class TaskLinkDetectionService {
   isMissingTaskLink(linkPath: string): boolean {
     if (!this.taskFolder) return false;
 
-    // Normalize for comparison — strip trailing / if present
-    const normalizedLinkPath = linkPath.endsWith("/")
+    // Normalize: strip trailing / for comparison, append .md for file system access
+    let normalizedLinkPath = linkPath.endsWith("/")
       ? linkPath.slice(0, -1)
       : linkPath;
+    if (!normalizedLinkPath.endsWith(".md")) {
+      normalizedLinkPath = normalizedLinkPath + ".md";
+    }
+
     const normalizedTaskFolder = this.taskFolder.endsWith("/")
       ? this.taskFolder.slice(0, -1)
       : this.taskFolder;
@@ -64,7 +68,7 @@ export class TaskLinkDetectionService {
     }
 
     // Check if file exists
-    const file = this.app.vault.getAbstractFileByPath(linkPath);
+    const file = this.app.vault.getAbstractFileByPath(normalizedLinkPath);
     return !(file instanceof TFile);
   }
 

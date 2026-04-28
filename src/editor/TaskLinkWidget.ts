@@ -3,6 +3,7 @@ import { TFile } from "obsidian";
 import { TaskInfo } from "../types";
 import NaviCalendarPlugin from "../main";
 import { WikilinkMatch } from "../services/TaskLinkDetectionService";
+import { slugify } from "../utils/linkUtils";
 
 export class TaskLinkWidget extends WidgetType {
   private taskInfo: TaskInfo | null; // null = task doesn't exist yet
@@ -201,12 +202,18 @@ export class TaskLinkWidget extends WidgetType {
 
   eq(other: WidgetType): boolean {
     if (!(other instanceof TaskLinkWidget)) return false;
-    return this.wikilinkMatch.start === other.wikilinkMatch.start &&
-           this.wikilinkMatch.end === other.wikilinkMatch.end;
+    // Compare position AND task status — if status changed (done↔todo), widget must be recreated
+    const samePosition =
+      this.wikilinkMatch.start === other.wikilinkMatch.start &&
+      this.wikilinkMatch.end === other.wikilinkMatch.end;
+    const sameStatus =
+      (this.taskInfo?.status ?? "") === (other.taskInfo?.status ?? "");
+    return samePosition && sameStatus;
   }
 
+  // Only block mousedown (prevents CodeMirror cursor move), let click through so dblclick fires
   ignoreEvent(event: Event): boolean {
-    return event.type === "mousedown" || event.type === "click";
+    return event.type === "mousedown";
   }
 
   get estimatedHeight(): number { return -1; }
@@ -231,8 +238,12 @@ export function readTaskInfoFromFile(filePath: string, plugin: NaviCalendarPlugi
   const isTask = (Array.isArray(tags) && tags.includes("task")) || fm.type === "task";
   if (!isTask) return null;
 
+  // Construct OS-spec ID from file path: tasks/買早餐.md → task/買早餐:0
+  const slug = file.basename.replace(/\.md$/, "");
+  const id = `task/${slugify(slug)}:0`;
+
   return {
-    id: `${filePath}:0`,
+    id,
     path: filePath,
     title: fm.title || file.basename.replace(/\.md$/, ""),
     status: fm.status || " ",
